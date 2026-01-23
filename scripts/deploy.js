@@ -1,0 +1,119 @@
+const { ethers } = require("hardhat");
+
+async function main() {
+  console.log("Deploying Sizland Notary-Mediated Escrow System...\n");
+
+  // Get deployer account
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying contracts with account:", deployer.address);
+  console.log("Account balance:", ethers.utils.formatEther(await deployer.getBalance()), "ETH\n");
+
+  const doddyNotary = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const sizlandTreasury = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
+  const testSeller = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
+
+  const defaultOwners = [
+    deployer.address,
+    doddyNotary,
+    sizlandTreasury
+  ];
+  const numConfirmationsRequired = 2;
+
+  // Deploy MultiSigWallet
+  console.log("Step 1: Deploying MultiSigWallet...");
+  const MultiSigWallet = await ethers.getContractFactory("MultiSigWallet");
+  const multiSigWallet = await MultiSigWallet.deploy(defaultOwners, numConfirmationsRequired);
+  await multiSigWallet.deployed();
+  console.log("MultiSigWallet deployed to:", multiSigWallet.address);
+
+  // Deploy NotaryMediatedEscrow
+  console.log("\nStep 2: Deploying NotaryMediatedEscrow...");
+  const NotaryMediatedEscrow = await ethers.getContractFactory("NotaryMediatedEscrow");
+  const notaryMediatedEscrow = await NotaryMediatedEscrow.deploy(
+    defaultOwners,
+    numConfirmationsRequired,
+    sizlandTreasury
+  );
+  await notaryMediatedEscrow.deployed();
+  console.log("NotaryMediatedEscrow deployed to:", notaryMediatedEscrow.address);
+
+  // Deploy EscrowFactory
+  console.log("\nStep 3: Deploying EscrowFactory...");
+  const EscrowFactory = await ethers.getContractFactory("EscrowFactory");
+  const escrowFactory = await EscrowFactory.deploy(
+    doddyNotary,
+    defaultOwners,
+    numConfirmationsRequired,
+    sizlandTreasury
+  );
+  await escrowFactory.deployed();
+  console.log("EscrowFactory deployed to:", escrowFactory.address);
+
+  // Create a test escrow
+  console.log("\nStep 4: Creating test escrow contract...");
+  const testAmount = ethers.utils.parseEther("5.0");
+  const createTx = await escrowFactory.createEscrowWithDoddy(testSeller, testAmount);
+  const receipt = await createTx.wait();
+  const escrowCreatedEvent = receipt.events.find(e => e.event === "EscrowCreated");
+  const testEscrowAddress = escrowCreatedEvent.args.escrowContract;
+  console.log("Test escrow contract deployed at:", testEscrowAddress);
+
+  // Executing full workflow
+  console.log("\nStep 5: Executing full end-to-end workflow...");
+  const testEscrow = await ethers.getContractAt("NotaryMediatedEscrow", testEscrowAddress);
+  const treasurySigner = await ethers.getSigner(sizlandTreasury);
+  const notarySigner = await ethers.getSigner(doddyNotary);
+
+  // 5.1: Intake
+  console.log("  5.1: Creating intake (Phase 1)...");
+  await (await testEscrow.connect(deployer).createIntake(
+    testAmount,
+    1,
+    "Farming",
+    testSeller,
+    doddyNotary
+  )).wait();
+
+  // 5.2: Discovery
+  console.log("  5.2: Uploading gallery & Selecting plot (Phase 2)...");
+  await (await testEscrow.connect(treasurySigner).uploadDigitalGallery(0, ["GPS1"], ["IMG1"], ["VID1"])).wait();
+  await (await testEscrow.connect(deployer).selectPlot(0)).wait();
+
+  // 5.3: Funding
+  console.log("  5.3: Funding escrow (Phase 3)...");
+  await (await testEscrow.fundEscrow(0, true, { value: testAmount })).wait();
+
+  // 5.4: Due Diligence
+  console.log("  5.4: Performing Due Diligence...");
+  const reportHash = ethers.utils.id("DD Report");
+  const searchHash = ethers.utils.id("Search Certificate");
+
+  await (await testEscrow.connect(notarySigner).uploadDueDiligenceReport(0, reportHash)).wait();
+  await (await testEscrow.connect(notarySigner).uploadDocument(0, 0, searchHash)).wait(); // 0 is SearchCertificate
+
+  console.log("    Verifying documents as client...");
+  await (await testEscrow.connect(deployer).verifyDocument(0, 1)).wait(); // 1 is DueDiligenceReport
+  await (await testEscrow.connect(deployer).verifyDocument(0, 0)).wait(); // 0 is SearchCertificate -> Should complete DD
+
+  // 5.5: Negotiation
+  console.log("  5.5: Notary setting negotiated rates (Custom Percentages)...");
+  // Set 15% deposit (1500 BP) and 3% facilitation fee (300 BP)
+  await (await testEscrow.connect(notarySigner).setNegotiatedRates(0, 1500, 300)).wait();
+
+  // Get status
+  const escrowDetails = await testEscrow.escrows(0);
+  console.log("\nTest Escrow Final Status:");
+  console.log("  State (Enum Index):", escrowDetails.state);
+  console.log("  Deposit Amount:", ethers.utils.formatEther(escrowDetails.depositAmount), "ETH (15%)");
+  console.log("  Facilitation Fee:", ethers.utils.formatEther(escrowDetails.facilitationFee), "ETH (3%)");
+  console.log("  Final Balance:", ethers.utils.formatEther(escrowDetails.finalAmount), "ETH");
+
+  console.log("\nExecution completed successfully!");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("\nERROR during execution:", error);
+    process.exit(1);
+  });

@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/c0bw3b/.local/bin/slither", line 3, in <module>
+    from slither.__main__ import main
+ModuleNotFoundError: No module named 'slither'

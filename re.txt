@@ -1,0 +1,58 @@
+Complete Sizland Land Acquisition Workflow Implementation
+
+Updated 4-Phase Workflow
+
+Phase 1: Intake & Discovery
+- Client Input: Budget ($5,000), desired size (2 acres), purpose (Farming/Speculation)
+- Sizland Action: Order routed to Admin Panel, team sources options
+- Digital Gallery: Geo-pins, photos, and videos uploaded by Sizland team
+- Client Selection: Review options and select preferred plot
+
+Phase 2: Due Diligence "Safety Gate"
+- Flexible Funding: Full escrow ($5,000) OR initial ($200)
+- Immediate Release: $200 goes to Sizland Notary for registry search & site visit
+- Ground Truth: Notary conducts search and physical visit, uploads DD Report
+- Decision Gates: Proceed, Pivot (up to 2 site visits covered), or Cancel
+
+Phase 3: Execution & Fiat Bridge
+- Client "Proceed": Triggers fund release from Escrow to Sizland Notary
+- Fiat Bridge: Notary converts crypto to KES and pays seller offline
+- Document Custody: Notary secures Original Title, Signed Transfers, LCB Consents
+- UI Update: Shows "Funds Disbursed. Sizland secured all documents"
+
+Phase 4: Transfer Registry & Finalization
+- Registry Wait: Notary lodges transfer at Land Registry
+- UI Transparency: Lodgement Receipt uploaded, progress bar + Estimated Completion Date
+- Title Issuance: 99-year leasehold title issued, notary uploads scan
+- Closing: Facilitation fee to Sizland, title shipped with courier tracking
+
+New Components Created
+1. IntakeDiscoveryPhase.jsx - Complete intake form with budget/size/purpose + Digital Gallery
+2. TransferRegistryPhase.jsx - Registry processing with progress tracking and courier info
+3. NotaryAdminPanel.jsx - Exclusive admin dashboard with:
+   - Fiat payment logging (KES amounts, exchange rates)
+   - Timeline management (expected completion dates)
+   - Document management hub (DD reports, receipts, titles)
+
+Updated Smart Contracts
+- New Escrow States: Intake, Discovery, ExecutionPending, TransferRegistry, Finalizing
+- Enhanced EscrowTransaction: Includes budget, size, purpose, KES amounts, exchange rates, courier tracking
+- Additional Functions: uploadDigitalGallery(), executeFiatBridge(), uploadLodgementReceipt(), completeTransfer()
+
+Sizland Treasury Integration
+- Updated Address: 0x16de625c556118998e7bf74ed06c067f775771a1 configured throughout
+- Multi-Sig Setup: Doddy + Sizland Treasury + trusted third party
+
+Admin Panel Features
+- Dashboard: Escrow management with real-time status tracking
+- Fiat Payments: Log KES payments with exchange rates against crypto released
+- Timeline Management: Update expected completion dates for registry wait
+- Document Hub: Upload Search Certificate, DD Reports, Lodgement Receipts, Final Titles
+
+Sizland Advantage Realized
+By implementing this workflow:
+- Eliminated Technical Barriers: Rural sellers kept off-platform
+- Trust Simplification: Client only needs to trust Sizland
+- Hybrid Approach: Blockchain security + traditional legal processes
+- Real Transparency: Full UI visibility during 2-3 week registry wait
+- Professional Service: Document custody, fiat conversion, shipping logistics
