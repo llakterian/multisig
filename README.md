@@ -1,4 +1,4 @@
-### The Sizland Land Acquisition Workflow
+### The Land Acquisition Workflow
 
 A proprietary P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
 
@@ -65,28 +65,28 @@ npm start
 
 ### Phase 1: Discovery & Lock-up
 
-- **User Action**: Client deposits total budget (e.g., $5,000) into Sizland Treasury
+- **User Action**: Client deposits total budget (e.g., $5,000) into Treasury
 - **System Action**: Funds are locked in multi-sig
 - **UI Component**: Curated list of "Digital Proofs" (Geo-tagged photos/videos)
 
 ### Phase 2: Safety Gate ($200 Due Diligence)
 
 - **Condition**: First milestone of $200 unlocked for plot selection
-- **Backend Logic**: Goes to Doddy's wallet for Registry Search and site visit
+- **Backend Logic**: Goes to Legal Notary's wallet for Registry Search and site visit
 - **UI Component**: "Document Vault" for viewing Registry Search and Site Visit Report
 
 ### Phase 3: Execution (Commitment Milestone)
 
 - **Condition**: Both parties sign draft agreement on-platform
 - **On-Platform Signing**: Client or seller uploads draft, both parties sign with real-time notifications
-- **Notary Role**: Doddy verifies signed documents and clicks "Proceed to Next Step"
+- **Notary Role**: Legal Notary verifies signed documents and clicks "Proceed to Next Step"
 - **Smart Contract Action**: Release percentage-based deposit to seller after notarization
 - **UI Component**: Document signing system with party status tracking
 
 ### Phase 4: Final Settlement & Notary Release
 
-- **Condition**: Doddy confirms Original Title and LCB Consents
-- **Smart Contract Action**: Release balance to seller + facilitation fee to Sizland
+- **Condition**: Legal Notary confirms Original Title and LCB Consents
+- **Smart Contract Action**: Release balance to seller + facilitation fee.
 - **UI Component**: "Finalization Status" showing transfer progress
 
 ## Smart Contract Details
@@ -158,8 +158,8 @@ enum SigningStatus {
 #### Key Functions
 
 ```solidity
-// Create escrow with Doddy as default notary
-function createEscrowWithDoddy(address _seller, uint _totalAmount) returns (address)
+// Create escrow with default notary
+function createEscrowWithNotary(address _seller, uint _totalAmount) returns (address)
 
 // Create escrow with custom notary
 function createEscrow(address _seller, address _notary, uint _totalAmount) returns (address)
@@ -224,10 +224,10 @@ Total Purchase Amount: $5,000
 
 ### Release Schedule
 
-1. **$200** → Doddy (Due Diligence)
+1. **$200** → Legal Notary (Due Diligence)
 2. **$500** → Seller (Deposit after Sale Agreement)
 3. **$4,200** → Seller (Final Balance after Title Transfer)
-4. **$100** → Sizland (Facilitation Fee)
+4. **$100** → Facilitation Fee
 
 ## Development
 
@@ -278,8 +278,8 @@ ESCROW_FACTORY_ADDRESS=0x...
 IPFS_GATEWAY=https://ipfs.io/ipfs/
 
 # Notary Configuration
-DODDY_NOTARY_ADDRESS=0xDoddyNotary123456789012345678901234567890
-SIZLAND_TREASURY_ADDRESS=0xSizlandTreasury1234567890123456789012345678
+LEGAL_NOTARY_ADDRESS=0xDoddyNotary123456789012345678901234567890
+TREASURY_ADDRESS=0xSizlandTreasury1234567890123456789012345678
 ```
 
 ## Integration Guide
@@ -287,8 +287,8 @@ SIZLAND_TREASURY_ADDRESS=0xSizlandTreasury1234567890123456789012345678
 ### Backend Integration
 
 1. **Deploy contracts** to desired network
-2. **Configure EscrowFactory** with Doddy's address
-3. **Set up multi-sig owners** (Doddy, Sizland, trusted third party)
+2. **Configure EscrowFactory** with Legal Notary's address
+3. **Set up multi-sig owners**
 4. **Fund Treasury** with initial capital if needed
 
 ### Frontend Integration
@@ -300,7 +300,7 @@ SIZLAND_TREASURY_ADDRESS=0xSizlandTreasury1234567890123456789012345678
 
 ### Legal Integration
 
-1. **Onboard Doddy** as authorized notary
+1. **Onboarding authorized notary
 2. **Establish document templates** for each phase
 3. **Set up verification process** for legal documents
 4. **Create dispute resolution** mechanism
@@ -323,8 +323,8 @@ SIZLAND_TREASURY_ADDRESS=0xSizlandTreasury1234567890123456789012345678
 
 ### Operational Requirements
 
-- Doddy must have proper notary certification
-- Sizland Treasury must be properly secured
+- Proper notary certification
+- Treasury must be properly secured
 - Document verification process must be established
 - Customer support infrastructure needed
 
@@ -338,5 +338,5 @@ For technical support or questions:
 
 ---
 
-**© 2026 Sizland Escrow - Secure Land Purchase Platform**
+**© 2026 Escrow Secure Land Purchase Platform**
 *Powered by Ethereum Smart Contracts & Notary Verification*
