@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MultiSigWallet.sol";
 
-contract NotaryMediatedEscrow is MultiSigWallet {
+contract NotaryMediatedEscrow is ReentrancyGuard {
     
-    // Escrow states
     enum EscrowState { 
         Created, 
         Intake, 
@@ -17,21 +17,17 @@ contract NotaryMediatedEscrow is MultiSigWallet {
         ExecutionPending, 
         ExecutionComplete, 
         TransferRegistry,
-        TransferInProgress,
-        Finalizing, 
         Completed, 
         Cancelled 
     }
     
-    // Milestone types
     enum Milestone { 
-        DueDiligence,    // $200 for registry search and site visit
-        Deposit,         // Percentage-based deposit to seller
-        FinalSettlement  // Balance + facilitation fee
+        DueDiligence,
+        Deposit,
+        FinalSettlement
     }
     
-// Document types
-enum DocumentType { 
+    enum DocumentType { 
         SearchCertificate,
         DueDiligenceReport,
         DraftSaleAgreement,
@@ -42,7 +38,6 @@ enum DocumentType {
         LCBConsent
     }
     
-    // Signing status
     enum SigningStatus { 
         NotStarted, 
         Draft, 
@@ -55,26 +50,28 @@ enum DocumentType {
     struct EscrowTransaction {
         address client;
         address seller;
-        address notary;          // Doddy - the oracle
+        address notary;
         uint totalAmount;
-        uint budget;             // Client budget
-        uint desiredSize;        // Desired size in acres
-        string purpose;           // Farming/Speculation
-        uint dueDiligenceFee;    // $200
-        uint depositAmount;      // Purchase funds
-        uint finalAmount;        // Balance + facilitation fee
-        uint facilitationFee;    // Sizland fee
-        uint sellerKESAmount;    // Fiat amount paid to seller in KES
-        uint exchangeRate;        // Crypto to KES exchange rate
+        uint budget;
+        uint desiredSize;
+        string purpose;
+        uint dueDiligenceFee;
+        uint depositAmount;
+        uint finalAmount;
+        uint facilitationFee;
+        uint sellerKESAmount;
+        uint exchangeRate;
         EscrowState state;
         uint createdAt;
         uint fundedAt;
         uint completedAt;
-        uint expectedCompletionDate; // Registry wait estimate
-        string courierTracking;   // Shipping tracking number
-        bool documentsSecured;    // Original documents in vault
-        uint facilitationFeeBasisPoints; // Customizable fee
-        uint depositBasisPoints;         // Customizable deposit %
+        uint expectedCompletionDate;
+        string courierTracking;
+        bool documentsSecured;
+        uint facilitationFeeBasisPoints;
+        uint depositBasisPoints;
+        uint depositedAmount;
+        bool facilitationFeeReleased;
     }
     
     struct Document {
@@ -89,15 +86,13 @@ enum DocumentType {
         uint notaryVerifiedAt;
     }
     
-    // Mappings
     mapping(uint => EscrowTransaction) public escrows;
     mapping(uint => mapping(Milestone => bool)) public milestoneCompleted;
     mapping(uint => mapping(DocumentType => Document)) public documents;
     mapping(uint => mapping(address => bool)) public partyNotifications;
-    mapping(uint => mapping(address => bool)) public clientConfirmed;
-    mapping(uint => mapping(address => bool)) public notaryConfirmed;
     
-    // Events
+    MultiSigWallet public multiSigWallet;
+    
     event EscrowCreated(uint indexed escrowId, address indexed client, address indexed seller, address notary, uint totalAmount, uint desiredSize, string purpose);
     event IntakeCompleted(uint indexed escrowId, uint budget, uint desiredSize, string purpose);
     event DigitalGalleryUploaded(uint indexed escrowId, string[] geoPins, string[] photos, string[] videos);
@@ -119,15 +114,17 @@ enum DocumentType {
     event BothPartiesSigned(uint indexed escrowId, DocumentType docType);
     event NotaryVerifiedSignedDocument(uint indexed escrowId, DocumentType docType);
     event PartyNotified(uint indexed escrowId, address party, string message);
+    event PlotSelected(uint indexed escrowId, address indexed client);
+    event ProceededWithPurchase(uint indexed escrowId, address indexed client);
     
-    // Constants
-    // Constants (Defaults)
-    uint public constant DEFAULT_DUE_DILIGENCE_FEE = 0.05 ether; // ~$200 at generic rates
-    uint public constant DEFAULT_FACILITATION_FEE_PERCENT = 200; // 2%
-    uint public constant DEFAULT_DEPOSIT_PERCENT = 1000; // 10%
+    uint public constant BASIS_POINTS_MAX = 10000;
+    uint public constant MAX_FACILITATION_FEE_BP = 500;
+    uint public constant DEFAULT_DUE_DILIGENCE_FEE = 0.05 ether;
+    uint public constant DEFAULT_FACILITATION_FEE_PERCENT = 200;
+    uint public constant DEFAULT_DEPOSIT_PERCENT = 1000;
     
     uint public escrowCount;
-    address public sizlandTreasury;
+    address public immutable sizlandTreasury;
     
     modifier onlyClient(uint _escrowId) {
         require(msg.sender == escrows[_escrowId].client, "Only client can call this");
@@ -136,6 +133,11 @@ enum DocumentType {
     
     modifier onlyNotary(uint _escrowId) {
         require(msg.sender == escrows[_escrowId].notary, "Only notary can call this");
+        _;
+    }
+    
+    modifier onlyMultiSigOwner() {
+        require(multiSigWallet.isOwner(msg.sender), "Only multi-sig owner");
         _;
     }
     
@@ -153,30 +155,27 @@ enum DocumentType {
         address[] memory _owners,
         uint _numConfirmationsRequired,
         address _sizlandTreasury
-    ) MultiSigWallet(_owners, _numConfirmationsRequired) {
+    ) {
         require(_sizlandTreasury != address(0), "Invalid treasury address");
+        require(_owners.length > 0, "Owners required");
+        
         sizlandTreasury = _sizlandTreasury;
+        multiSigWallet = new MultiSigWallet(_owners, _numConfirmationsRequired);
+        multiSigWallet.setTrustedCaller(address(this));
     }
     
-    /**
-     * @dev Creates intake for land purchase
-     * @param _budget Client's budget (e.g., $5,000)
-     * @param _desiredSize Desired size in acres
-     * @param _purpose Purpose (Farming/Speculation)
-     * @param _seller The property seller
-     * @param _notary The notary (Doddy)
-     */
     function createIntake(
         uint _budget,
         uint _desiredSize,
-        string memory _purpose,
+        string calldata _purpose,
         address _seller,
         address _notary
-    ) public returns (uint escrowId) {
+    ) external returns (uint escrowId) {
         require(_seller != address(0), "Invalid seller address");
         require(_notary != address(0), "Invalid notary address");
         require(_budget >= DEFAULT_DUE_DILIGENCE_FEE, "Budget too low");
         require(_desiredSize > 0, "Invalid size");
+        require(bytes(_purpose).length > 0, "Purpose required");
         
         escrowId = escrowCount++;
         
@@ -189,9 +188,9 @@ enum DocumentType {
             desiredSize: _desiredSize,
             purpose: _purpose,
             dueDiligenceFee: DEFAULT_DUE_DILIGENCE_FEE,
-            depositAmount: 0, // Will be calculated after selection/negotiation
-            finalAmount: 0,   // Will be calculated after selection/negotiation
-            facilitationFee: 0, // Will be calculated after selection/negotiation
+            depositAmount: 0,
+            finalAmount: 0,
+            facilitationFee: 0,
             sellerKESAmount: 0,
             exchangeRate: 0,
             state: EscrowState.Intake,
@@ -202,22 +201,21 @@ enum DocumentType {
             courierTracking: "",
             documentsSecured: false,
             facilitationFeeBasisPoints: DEFAULT_FACILITATION_FEE_PERCENT,
-            depositBasisPoints: DEFAULT_DEPOSIT_PERCENT
+            depositBasisPoints: DEFAULT_DEPOSIT_PERCENT,
+            depositedAmount: 0,
+            facilitationFeeReleased: false
         });
         
         emit EscrowCreated(escrowId, msg.sender, _seller, _notary, _budget, _desiredSize, _purpose);
         emit IntakeCompleted(escrowId, _budget, _desiredSize, _purpose);
     }
     
-    /**
-     * @dev Upload digital gallery (Sizland admin only)
-     */
     function uploadDigitalGallery(
         uint _escrowId,
-        string[] memory _geoPins,
-        string[] memory _photos,
-        string[] memory _videos
-    ) public validEscrow(_escrowId) {
+        string[] calldata _geoPins,
+        string[] calldata _photos,
+        string[] calldata _videos
+    ) external validEscrow(_escrowId) {
         require(msg.sender == sizlandTreasury, "Only Sizland admin can upload gallery");
         require(escrows[_escrowId].state == EscrowState.Intake, "Wrong state");
         
@@ -226,74 +224,55 @@ enum DocumentType {
         emit DigitalGalleryUploaded(_escrowId, _geoPins, _photos, _videos);
     }
     
-    /**
-     * @dev Client selects plot from gallery
-     */
-    function selectPlot(uint _escrowId) public onlyClient(_escrowId) validEscrow(_escrowId) {
+    function selectPlot(uint _escrowId) external onlyClient(_escrowId) validEscrow(_escrowId) {
         require(escrows[_escrowId].state == EscrowState.Discovery, "Not in discovery phase");
         escrows[_escrowId].state = EscrowState.PlotSelected;
+        emit PlotSelected(_escrowId, msg.sender);
     }
     
-    /**
-     * @dev Funds the escrow with total amount or initial $200
-     */
     function fundEscrow(uint _escrowId, bool _fullAmount) 
-        public 
+        external 
         payable 
         validEscrow(_escrowId)
         escrowState(_escrowId, EscrowState.PlotSelected)
+        nonReentrant
     {
-        uint requiredAmount = _fullAmount ? escrows[_escrowId].budget : DEFAULT_DUE_DILIGENCE_FEE;
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        uint requiredAmount = _fullAmount ? escrow.budget : DEFAULT_DUE_DILIGENCE_FEE;
         require(msg.value >= requiredAmount, "Incorrect amount");
         
-        if (!_fullAmount) {
-            // Immediate release of $200 to notary
-            _releaseFunds(_escrowId, escrows[_escrowId].notary, DEFAULT_DUE_DILIGENCE_FEE);
-        }
+        // Update state BEFORE external call (Fixes reentrancy vulnerability)
+        escrow.depositedAmount += msg.value;
+        escrow.state = EscrowState.DueDiligencePending;
+        escrow.fundedAt = block.timestamp;
         
-        if (_fullAmount) {
-            escrows[_escrowId].state = EscrowState.DueDiligencePending;
-        } else {
-            escrows[_escrowId].state = EscrowState.DueDiligencePending;
-        }
-        
-        escrows[_escrowId].fundedAt = block.timestamp;
+        // Perform external call AFTER state updates
+        (bool success, ) = address(multiSigWallet).call{value: msg.value}("");
+        require(success, "Transfer to multi-sig failed");
         
         emit EscrowFunded(_escrowId, msg.value, DEFAULT_DUE_DILIGENCE_FEE);
     }
     
-    /**
-     * @dev Notary uploads due diligence report
-     */
     function uploadDueDiligenceReport(uint _escrowId, bytes32 _reportHash) 
-        public 
+        external 
         onlyNotary(_escrowId) 
         validEscrow(_escrowId) 
     {
         require(escrows[_escrowId].state == EscrowState.DueDiligencePending, "Wrong state");
         
         Document storage doc = documents[_escrowId][DocumentType.DueDiligenceReport];
-        doc.documentHash = _reportHash;
-        doc.uploadedAt = block.timestamp;
-        doc.verified = false;
-        doc.uploadedBy = msg.sender;
-        doc.signingStatus = SigningStatus.NotStarted;
-        doc.clientSignedAt = 0;
-        doc.sellerSignedAt = 0;
-        doc.notaryVerifiedAt = 0;
+        _initializeDocument(doc, _reportHash, msg.sender);
         
         emit DueDiligenceReportUploaded(_escrowId, _reportHash);
         emit DocumentUploaded(_escrowId, DocumentType.DueDiligenceReport, _reportHash, msg.sender);
     }
     
-    /**
-     * @dev Upload draft sale agreement (client or seller)
-     */
     function uploadDraftAgreement(
         uint _escrowId,
         bytes32 _hash
-    ) public validEscrow(_escrowId) {
-        require(msg.sender == escrows[_escrowId].client || msg.sender == escrows[_escrowId].seller, "Only client or seller can upload draft");
+    ) external validEscrow(_escrowId) {
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        require(msg.sender == escrow.client || msg.sender == escrow.seller, "Only client or seller can upload draft");
         
         Document storage doc = documents[_escrowId][DocumentType.DraftSaleAgreement];
         doc.documentHash = _hash;
@@ -304,28 +283,25 @@ enum DocumentType {
         emit DraftAgreementUploaded(_escrowId, _hash, msg.sender);
         emit DocumentUploaded(_escrowId, DocumentType.DraftSaleAgreement, _hash, msg.sender);
         
-        // Notify the other party
-        address otherParty = msg.sender == escrows[_escrowId].client ? escrows[_escrowId].seller : escrows[_escrowId].client;
+        address otherParty = msg.sender == escrow.client ? escrow.seller : escrow.client;
         _notifyParty(_escrowId, otherParty, "Draft sale agreement uploaded for review");
     }
     
-    /**
-     * @dev Sign document on platform
-     */
     function signDocument(
         uint _escrowId,
         DocumentType _docType
-    ) public validEscrow(_escrowId) {
+    ) external validEscrow(_escrowId) {
+        EscrowTransaction storage escrow = escrows[_escrowId];
         require(_docType == DocumentType.DraftSaleAgreement, "Can only sign draft agreement");
-        require(msg.sender == escrows[_escrowId].client || msg.sender == escrows[_escrowId].seller, "Only parties can sign");
+        require(msg.sender == escrow.client || msg.sender == escrow.seller, "Only parties can sign");
         require(!documents[_escrowId][_docType].hasSigned[msg.sender], "Already signed");
         
         Document storage doc = documents[_escrowId][_docType];
         doc.hasSigned[msg.sender] = true;
         
-        string memory signerRole = msg.sender == escrows[_escrowId].client ? "Client" : "Seller";
+        string memory signerRole = msg.sender == escrow.client ? "Client" : "Seller";
         
-        if (msg.sender == escrows[_escrowId].client) {
+        if (msg.sender == escrow.client) {
             doc.clientSignedAt = block.timestamp;
             doc.signingStatus = SigningStatus.ClientSigned;
         } else {
@@ -335,36 +311,28 @@ enum DocumentType {
         
         emit DocumentSigned(_escrowId, _docType, msg.sender, signerRole);
         
-        // Notify the other party
-        address otherParty = msg.sender == escrows[_escrowId].client ? escrows[_escrowId].seller : escrows[_escrowId].client;
+        address otherParty = msg.sender == escrow.client ? escrow.seller : escrow.client;
         _notifyParty(_escrowId, otherParty, string(abi.encodePacked(signerRole, " has signed the agreement")));
         
-        // Check if both parties have signed
-        if (doc.hasSigned[escrows[_escrowId].client] && doc.hasSigned[escrows[_escrowId].seller]) {
+        if (doc.hasSigned[escrow.client] && doc.hasSigned[escrow.seller]) {
             doc.signingStatus = SigningStatus.BothSigned;
             emit BothPartiesSigned(_escrowId, _docType);
-            
-            // Notify notary
-            _notifyParty(_escrowId, escrows[_escrowId].notary, "Both parties have signed the agreement - ready for notarization");
+            _notifyParty(_escrowId, escrow.notary, "Both parties have signed the agreement - ready for notarization");
         }
     }
     
-    /**
-     * @dev Notary verifies signed document and proceeds to next step
-     */
     function notarizeSignedDocument(
         uint _escrowId,
         DocumentType _docType
-    ) public onlyNotary(_escrowId) validEscrow(_escrowId) {
+    ) external onlyNotary(_escrowId) validEscrow(_escrowId) {
         require(_docType == DocumentType.DraftSaleAgreement, "Can only notarize signed agreement");
-        require(documents[_escrowId][_docType].signingStatus == SigningStatus.BothSigned, "Both parties must sign first");
-        
         Document storage doc = documents[_escrowId][_docType];
+        require(doc.signingStatus == SigningStatus.BothSigned, "Both parties must sign first");
+        
         doc.signingStatus = SigningStatus.NotaryVerified;
         doc.notaryVerifiedAt = block.timestamp;
         doc.verified = true;
         
-        // Create signed document record
         Document storage signedDoc = documents[_escrowId][DocumentType.SignedSaleAgreement];
         signedDoc.documentHash = doc.documentHash;
         signedDoc.uploadedAt = doc.uploadedAt;
@@ -374,24 +342,20 @@ enum DocumentType {
         signedDoc.clientSignedAt = doc.clientSignedAt;
         signedDoc.sellerSignedAt = doc.sellerSignedAt;
         signedDoc.notaryVerifiedAt = doc.notaryVerifiedAt;
-        // Note: mapping hasSigned is initialized to false by default
         
         emit NotaryVerifiedSignedDocument(_escrowId, _docType);
         emit DocumentVerified(_escrowId, DocumentType.SignedSaleAgreement);
         
-        // Notify parties that notarization is complete
-        _notifyParty(_escrowId, escrows[_escrowId].client, "Agreement has been notarized - ready for deposit release");
-        _notifyParty(_escrowId, escrows[_escrowId].seller, "Agreement has been notarized - ready for deposit release");
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        _notifyParty(_escrowId, escrow.client, "Agreement has been notarized - ready for deposit release");
+        _notifyParty(_escrowId, escrow.seller, "Agreement has been notarized - ready for deposit release");
     }
     
-    /**
-     * @dev Notary uploads other documents (registry search, site visit, etc.)
-     */
     function uploadDocument(
         uint _escrowId,
         DocumentType _docType,
         bytes32 _hash
-    ) public onlyNotary(_escrowId) validEscrow(_escrowId) {
+    ) external onlyNotary(_escrowId) validEscrow(_escrowId) {
         require(_docType != DocumentType.DraftSaleAgreement, "Use uploadDraftAgreement for sale agreement");
         
         Document storage doc = documents[_escrowId][_docType];
@@ -403,231 +367,181 @@ enum DocumentType {
         emit DocumentUploaded(_escrowId, _docType, _hash, msg.sender);
     }
     
-    /**
-     * @dev Internal notification function
-     */
     function _notifyParty(uint _escrowId, address _party, string memory _message) internal {
         partyNotifications[_escrowId][_party] = true;
         emit PartyNotified(_escrowId, _party, _message);
     }
     
-    /**
-     * @dev Client verifies document
-     */
+    function _initializeDocument(Document storage doc, bytes32 _hash, address _uploader) internal {
+        doc.documentHash = _hash;
+        doc.uploadedAt = block.timestamp;
+        doc.verified = false;
+        doc.uploadedBy = _uploader;
+        doc.signingStatus = SigningStatus.NotStarted;
+        doc.clientSignedAt = 0;
+        doc.sellerSignedAt = 0;
+        doc.notaryVerifiedAt = 0;
+    }
+    
     function verifyDocument(
         uint _escrowId,
         DocumentType _docType
-    ) public onlyClient(_escrowId) validEscrow(_escrowId) {
+    ) external onlyClient(_escrowId) validEscrow(_escrowId) {
         require(documents[_escrowId][_docType].uploadedAt > 0, "Document not uploaded");
         
         documents[_escrowId][_docType].verified = true;
         emit DocumentVerified(_escrowId, _docType);
         
-        // Check if due diligence is complete
         if (_docType == DocumentType.SearchCertificate && 
             documents[_escrowId][DocumentType.DueDiligenceReport].verified) {
             _completeDueDiligence(_escrowId);
         }
     }
     
-    /**
-     * @dev Notary sets negotiated rates after successful DD
-     */
     function setNegotiatedRates(
         uint _escrowId, 
         uint _depositBP, 
         uint _facilitationBP
     ) 
-        public 
+        external 
         onlyNotary(_escrowId) 
         validEscrow(_escrowId)
     {
-        require(escrows[_escrowId].state >= EscrowState.DueDiligenceComplete, "DD not complete");
-        require(_depositBP <= 10000 && _facilitationBP <= 5000, "Invalid rates");
-
         EscrowTransaction storage escrow = escrows[_escrowId];
+        require(escrow.state >= EscrowState.DueDiligenceComplete, "DD not complete");
+        require(_depositBP <= BASIS_POINTS_MAX, "Invalid deposit rate");
+        require(_facilitationBP <= MAX_FACILITATION_FEE_BP, "Invalid facilitation rate");
+
         escrow.depositBasisPoints = _depositBP;
         escrow.facilitationFeeBasisPoints = _facilitationBP;
 
-        // Recalculate amounts based on total budget
         uint availableForPurchase = escrow.budget - escrow.dueDiligenceFee;
-        escrow.facilitationFee = (escrow.budget * _facilitationBP) / 10000;
-        escrow.depositAmount = (availableForPurchase * _depositBP) / 10000;
+        escrow.facilitationFee = (escrow.budget * _facilitationBP) / BASIS_POINTS_MAX;
+        escrow.depositAmount = (availableForPurchase * _depositBP) / BASIS_POINTS_MAX;
         escrow.finalAmount = availableForPurchase - escrow.depositAmount - escrow.facilitationFee;
 
         emit PartyNotified(_escrowId, escrow.client, "Negotiated rates have been set by the notary");
     }
 
-    /**
-     * @dev Complete due diligence milestone and release $200 (default) to notary
-     */
     function _completeDueDiligence(uint _escrowId) internal {
-        require(uint(escrows[_escrowId].state) == uint(EscrowState.DueDiligencePending), "Wrong state");
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        require(escrow.state == EscrowState.DueDiligencePending, "Wrong state");
         
         milestoneCompleted[_escrowId][Milestone.DueDiligence] = true;
-        escrows[_escrowId].state = EscrowState.DueDiligenceComplete;
-        
-        // Release due diligence fee to notary
-        _releaseFunds(_escrowId, escrows[_escrowId].notary, escrows[_escrowId].dueDiligenceFee);
+        escrow.state = EscrowState.DueDiligenceComplete;
         
         emit MilestoneCompleted(_escrowId, Milestone.DueDiligence);
     }
     
-    /**
-     * @dev Client decides to proceed with purchase after DD report
-     */
     function proceedWithPurchase(uint _escrowId) 
-        public 
+        external 
         onlyClient(_escrowId) 
         validEscrow(_escrowId)
         escrowState(_escrowId, EscrowState.DueDiligenceComplete)
     {
         escrows[_escrowId].state = EscrowState.ExecutionPending;
+        emit ProceededWithPurchase(_escrowId, msg.sender);
     }
     
-    /**
-     * @dev Notary executes fiat bridge - converts crypto to KES and pays seller
-     */
     function executeFiatBridge(
         uint _escrowId,
         uint _kesAmount,
         uint _exchangeRate
     ) 
-        public 
+        external 
         onlyNotary(_escrowId) 
         validEscrow(_escrowId) 
         escrowState(_escrowId, EscrowState.ExecutionPending)
+        nonReentrant
     {
         require(_kesAmount > 0, "Invalid KES amount");
         require(_exchangeRate > 0, "Invalid exchange rate");
         
-        escrows[_escrowId].sellerKESAmount = _kesAmount;
-        escrows[_escrowId].exchangeRate = _exchangeRate;
-        escrows[_escrowId].state = EscrowState.ExecutionComplete;
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        escrow.sellerKESAmount = _kesAmount;
+        escrow.exchangeRate = _exchangeRate;
+        escrow.state = EscrowState.ExecutionComplete;
+        escrow.documentsSecured = true;
         
-        // Mark documents as secured
-        escrows[_escrowId].documentsSecured = true;
-        
-        emit FiatBridgeExecuted(_escrowId, escrows[_escrowId].depositAmount, _kesAmount, _exchangeRate);
+        emit FiatBridgeExecuted(_escrowId, escrow.depositAmount, _kesAmount, _exchangeRate);
         emit FundsDisbursedToSeller(_escrowId, _kesAmount);
         emit DocumentsSecured(_escrowId, "Original Title, Signed Transfers, LCB Consents");
     }
     
-    /**
-     * @dev Notary uploads lodgement receipt and sets expected completion date
-     */
     function uploadLodgementReceipt(
         uint _escrowId,
         bytes32 _receiptHash,
         uint _expectedCompletionDate
     ) 
-        public 
+        external 
         onlyNotary(_escrowId) 
         validEscrow(_escrowId) 
         escrowState(_escrowId, EscrowState.ExecutionComplete)
     {
-        escrows[_escrowId].state = EscrowState.TransferRegistry;
-        escrows[_escrowId].expectedCompletionDate = _expectedCompletionDate;
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        escrow.state = EscrowState.TransferRegistry;
+        escrow.expectedCompletionDate = _expectedCompletionDate;
         
         Document storage receiptDoc = documents[_escrowId][DocumentType.LodgementReceipt];
-        receiptDoc.documentHash = _receiptHash;
-        receiptDoc.uploadedAt = block.timestamp;
+        _initializeDocument(receiptDoc, _receiptHash, msg.sender);
         receiptDoc.verified = true;
-        receiptDoc.uploadedBy = msg.sender;
-        receiptDoc.signingStatus = SigningStatus.NotStarted;
-        receiptDoc.clientSignedAt = 0;
-        receiptDoc.sellerSignedAt = 0;
-        receiptDoc.notaryVerifiedAt = 0;
         
         emit LodgementReceiptUploaded(_escrowId, _receiptHash, _expectedCompletionDate);
         emit DocumentUploaded(_escrowId, DocumentType.LodgementReceipt, _receiptHash, msg.sender);
     }
     
-    /**
-     * @dev Notary uploads final title and sets courier tracking
-     */
     function completeTransfer(
         uint _escrowId,
         bytes32 _titleHash,
-        string memory _courierTracking
+        string calldata _courierTracking
     ) 
-        public 
+        external 
         onlyNotary(_escrowId) 
         validEscrow(_escrowId) 
         escrowState(_escrowId, EscrowState.TransferRegistry)
+        nonReentrant
     {
-        escrows[_escrowId].state = EscrowState.Finalizing;
-        escrows[_escrowId].courierTracking = _courierTracking;
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        escrow.state = EscrowState.Completed;
+        escrow.courierTracking = _courierTracking;
+        escrow.completedAt = block.timestamp;
         
         Document storage titleDoc = documents[_escrowId][DocumentType.OriginalTitle];
-        titleDoc.documentHash = _titleHash;
-        titleDoc.uploadedAt = block.timestamp;
+        _initializeDocument(titleDoc, _titleHash, msg.sender);
         titleDoc.verified = true;
-        titleDoc.uploadedBy = msg.sender;
-        titleDoc.signingStatus = SigningStatus.NotStarted;
-        titleDoc.clientSignedAt = 0;
-        titleDoc.sellerSignedAt = 0;
-        titleDoc.notaryVerifiedAt = 0;
         
-        // Release facilitation fee to Sizland
-        _releaseFunds(_escrowId, sizlandTreasury, escrows[_escrowId].facilitationFee);
-        
-        escrows[_escrowId].state = EscrowState.Completed;
-        escrows[_escrowId].completedAt = block.timestamp;
+        // Update state BEFORE external call (Fixes reentrancy vulnerability)
+        if (!escrow.facilitationFeeReleased && escrow.facilitationFee > 0) {
+            escrow.facilitationFeeReleased = true;
+            _releaseFunds(_escrowId, sizlandTreasury, escrow.facilitationFee);
+        }
         
         emit TitleIssued(_escrowId, _titleHash, _courierTracking);
         emit DocumentUploaded(_escrowId, DocumentType.OriginalTitle, _titleHash, msg.sender);
         emit EscrowCompleted(_escrowId);
     }
     
-    /**
-     * @dev Final settlement - notary confirms original title and LCB consents
-     */
-    function finalizeTransfer(uint _escrowId) 
-        public 
-        onlyNotary(_escrowId) 
-        validEscrow(_escrowId)
-        escrowState(_escrowId, EscrowState.ExecutionPending)
-    {
-        require(documents[_escrowId][DocumentType.OriginalTitle].verified, "Original title not verified");
-        require(documents[_escrowId][DocumentType.LCBConsent].verified, "LCB consent not verified");
-        
-        milestoneCompleted[_escrowId][Milestone.FinalSettlement] = true;
-        escrows[_escrowId].state = EscrowState.TransferInProgress;
-        
-        // Release final amount to seller
-        _releaseFunds(_escrowId, escrows[_escrowId].seller, escrows[_escrowId].finalAmount);
-        
-        // Release facilitation fee to Sizland
-        _releaseFunds(_escrowId, sizlandTreasury, escrows[_escrowId].facilitationFee);
-        
-        escrows[_escrowId].state = EscrowState.Completed;
-        escrows[_escrowId].completedAt = block.timestamp;
-        
-        emit MilestoneCompleted(_escrowId, Milestone.FinalSettlement);
-        emit EscrowCompleted(_escrowId);
-    }
-    
-    /**
-     * @dev Internal function to release funds using multi-sig
-     */
     function _releaseFunds(uint _escrowId, address _recipient, uint _amount) internal {
-        // Submit transaction to multi-sig
-        submitTransaction(_recipient, _amount, "");
+        bytes memory data = abi.encode(_escrowId, _recipient);
+        multiSigWallet.submitTransaction(_recipient, _amount, data);
+        emit FundsReleased(_escrowId, Milestone.FinalSettlement, _recipient, _amount);
     }
     
-    /**
-     * @dev Get escrow progress for UI
-     */
+    receive() external payable {
+        // Accept ETH - forward to multi-sig
+        (bool success, ) = address(multiSigWallet).call{value: msg.value}("");
+        require(success, "Forward to multi-sig failed");
+    }
+    
     function getEscrowProgress(uint _escrowId) 
-        public 
+        external 
         view 
         validEscrow(_escrowId) 
         returns (
             EscrowState state,
-            bool[3] memory milestones, // DueDiligence, Deposit, FinalSettlement
-            bool[5] memory docs,      // All document types
-            uint[4] memory amounts     // dueDiligenceFee, depositAmount, finalAmount, facilitationFee
+            bool[3] memory milestones,
+            bool[5] memory docs,
+            uint[5] memory amounts
         ) 
     {
         EscrowTransaction storage escrow = escrows[_escrowId];
@@ -647,25 +561,34 @@ enum DocumentType {
         amounts[1] = escrow.depositAmount;
         amounts[2] = escrow.finalAmount;
         amounts[3] = escrow.facilitationFee;
+        amounts[4] = escrow.depositedAmount;
     }
     
-    /**
-     * @dev Cancel escrow (emergency function)
-     */
     function cancelEscrow(uint _escrowId) 
-        public 
+        external 
         onlyClient(_escrowId) 
         validEscrow(_escrowId)
+        nonReentrant
     {
-        require(escrows[_escrowId].state != EscrowState.Completed, "Cannot cancel completed escrow");
+        EscrowTransaction storage escrow = escrows[_escrowId];
+        require(escrow.state != EscrowState.Completed, "Cannot cancel completed escrow");
         
-        escrows[_escrowId].state = EscrowState.Cancelled;
+        escrow.state = EscrowState.Cancelled;
         
-        // Refund client if escrow was funded
-        if (escrows[_escrowId].fundedAt > 0) {
-            _releaseFunds(_escrowId, escrows[_escrowId].client, escrows[_escrowId].totalAmount);
+        if (escrow.depositedAmount > 0) {
+            uint refundAmount = escrow.depositedAmount;
+            escrow.depositedAmount = 0;
+            _releaseFunds(_escrowId, escrow.client, refundAmount);
         }
         
         emit EscrowCancelled(_escrowId);
+    }
+    
+    function getMultiSigAddress() external view returns (address) {
+        return address(multiSigWallet);
+    }
+    
+    function getBalance() external view returns (uint) {
+        return address(multiSigWallet).balance;
     }
 }

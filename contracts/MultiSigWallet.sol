@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
-contract MultiSigWallet {
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract MultiSigWallet is ReentrancyGuard {
     event Deposit(address indexed sender, uint amount);
     event SubmitTransaction(
         address indexed owner,
@@ -17,6 +19,7 @@ contract MultiSigWallet {
     address[] public owners;
     mapping(address => bool) public isOwner;
     uint public numConfirmationsRequired;
+    address public trustedCaller;
 
     struct Transaction {
         address to;
@@ -26,13 +29,17 @@ contract MultiSigWallet {
         uint numConfirmations;
     }
 
-    // Mapping from tx index => owner => bool
     mapping(uint => mapping(address => bool)) public isConfirmed;
 
     Transaction[] public transactions;
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "not owner");
+        _;
+    }
+    
+    modifier onlyOwnerOrTrusted() {
+        require(isOwner[msg.sender] || msg.sender == trustedCaller, "not authorized");
         _;
     }
 
@@ -70,6 +77,15 @@ contract MultiSigWallet {
 
         numConfirmationsRequired = _numConfirmationsRequired;
     }
+    
+    event TrustedCallerSet(address indexed newCaller, address indexed setter);
+    
+    function setTrustedCaller(address _trustedCaller) external {
+        require(_trustedCaller != address(0), "Cannot set to zero address");
+        require(trustedCaller == address(0) || msg.sender == trustedCaller, "Already set");
+        trustedCaller = _trustedCaller;
+        emit TrustedCallerSet(_trustedCaller, msg.sender);
+    }
 
     receive() external payable {
         emit Deposit(msg.sender, msg.value);
@@ -79,7 +95,7 @@ contract MultiSigWallet {
         address _to,
         uint _value,
         bytes memory _data
-    ) public onlyOwner {
+    ) external onlyOwnerOrTrusted {
         uint txIndex = transactions.length;
 
         transactions.push(Transaction({
@@ -94,7 +110,7 @@ contract MultiSigWallet {
     }
 
     function confirmTransaction(uint _txIndex)
-        public
+        external
         onlyOwner
         txExists(_txIndex)
         notExecuted(_txIndex)
@@ -112,9 +128,33 @@ contract MultiSigWallet {
     }
 
     function executeTransaction(uint _txIndex)
-        public
+        internal
         txExists(_txIndex)
         notExecuted(_txIndex)
+        nonReentrant
+    {
+        require(
+            transactions[_txIndex].numConfirmations >= numConfirmationsRequired,
+            "cannot execute tx"
+        );
+
+        Transaction storage transaction = transactions[_txIndex];
+
+        transaction.executed = true;
+        emit ExecuteTransaction(msg.sender, _txIndex);
+
+        (bool success, ) = transaction.to.call{value: transaction.value}(
+            transaction.data
+        );
+        require(success, "tx failed");
+    }
+
+    function executeTransactionExternal(uint _txIndex)
+        external
+        onlyOwner
+        txExists(_txIndex)
+        notExecuted(_txIndex)
+        nonReentrant
     {
         require(
             transactions[_txIndex].numConfirmations >= numConfirmationsRequired,
@@ -133,7 +173,7 @@ contract MultiSigWallet {
     }
 
     function revokeConfirmation(uint _txIndex)
-        public
+        external
         onlyOwner
         txExists(_txIndex)
         notExecuted(_txIndex)
@@ -147,16 +187,16 @@ contract MultiSigWallet {
         emit RevokeConfirmation(msg.sender, _txIndex);
     }
 
-    function getOwners() public view returns (address[] memory) {
+    function getOwners() external view returns (address[] memory) {
         return owners;
     }
 
-    function getTransactionCount() public view returns (uint) {
+    function getTransactionCount() external view returns (uint) {
         return transactions.length;
     }
 
     function getTransaction(uint _txIndex)
-        public
+        external
         view
         returns (
             address to,
@@ -176,4 +216,4 @@ contract MultiSigWallet {
             transaction.numConfirmations
         );
     }
-}   
+}
