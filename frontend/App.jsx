@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import EscrowInterface from './EscrowInterface';
-import DocumentHashingSystem from './DocumentHashingSystem';
+import DocumentHashingSystem from './EscrowInterface';
 import MultiSigVerification from './MultiSigVerification';
 import ProgressBar from './ProgressBar';
 import './App.css';
+
+const FACTORY_ADDRESS = process.env.REACT_APP_FACTORY_ADDRESS || '';
+
+const isValidAddress = (address) => {
+  return address && ethers.utils.isAddress(address);
+};
 
 const App = () => {
   const [userAddress, setUserAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isNotary, setIsNotary] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [activeTab, setActiveTab] = useState('escrow');
-  const [factoryAddress] = useState('0x59b670e9fA9D0A427751Af201D676719a970857b'); // Deployed EscrowFactory address
+  const [factoryAddress, setFactoryAddress] = useState(FACTORY_ADDRESS);
+  const [factoryContract, setFactoryContract] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const phases = [
     { id: 0, name: 'Intake & Discovery', description: 'Submit requirements and select plot' },
@@ -29,18 +39,59 @@ const App = () => {
         const accounts = await window.ethereum.request({
           method: 'eth_requestAccounts'
         });
+        
+        if (!isValidAddress(accounts[0])) {
+          setValidationErrors(prev => ({ ...prev, wallet: 'Invalid wallet address' }));
+          return;
+        }
+        
         setUserAddress(accounts[0]);
         setIsConnected(true);
-
-        // Check if user is Doddy (notary) - address from Hardhat Account #1
-        if (accounts[0].toLowerCase() === '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'.toLowerCase()) {
-          setIsNotary(true);
+        
+        if (factoryAddress && isValidAddress(factoryAddress)) {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const factory = new ethers.Contract(
+            factoryAddress,
+            ['function doddyNotary() view returns (address)', 'function owner() view returns (address)'],
+            provider
+          );
+          setFactoryContract(factory);
+          
+          try {
+            const notary = await factory.doddyNotary();
+            const owner = await factory.owner();
+            
+            if (accounts[0].toLowerCase() === notary.toLowerCase()) {
+              setIsNotary(true);
+            }
+            if (accounts[0].toLowerCase() === owner.toLowerCase()) {
+              setIsOwner(true);
+            }
+          } catch (error) {
+            console.error('Error fetching roles:', error);
+          }
         }
       } catch (error) {
         console.error('Error connecting wallet:', error);
+        setValidationErrors(prev => ({ ...prev, wallet: 'Failed to connect wallet' }));
       }
     } else {
-      alert('Please install MetaMask to use this application');
+      setValidationErrors(prev => ({ ...prev, wallet: 'Please install MetaMask to use this application' }));
+    }
+  };
+  
+  const handleFactoryAddressChange = (e) => {
+    const value = e.target.value;
+    setFactoryAddress(value);
+    
+    if (value && !isValidAddress(value)) {
+      setValidationErrors(prev => ({ ...prev, factory: 'Invalid contract address' }));
+    } else {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.factory;
+        return newErrors;
+      });
     }
   };
 
@@ -69,7 +120,7 @@ const App = () => {
           <NotaryAdminPanel
             escrowAddress={factoryAddress}
             userAddress={userAddress}
-            isAdmin={isNotary} // In production, check admin role
+            isAdmin={isNotary || isOwner}
           />
         );
       default:
@@ -94,6 +145,9 @@ const App = () => {
                 </div>
                 {isNotary && (
                   <div className="notary-badge">Notary</div>
+                )}
+                {isOwner && (
+                  <div className="owner-badge">Owner</div>
                 )}
               </div>
             ) : (
@@ -125,7 +179,7 @@ const App = () => {
           >
             Multi-Sig
           </button>
-          {isNotary && (
+          {(isNotary || isOwner) && (
             <button
               className={`nav-tab ${activeTab === 'admin' ? 'active' : ''}`}
               onClick={() => setActiveTab('admin')}
@@ -135,6 +189,20 @@ const App = () => {
           )}
         </div>
       </nav>
+      
+      {!factoryAddress && (
+        <div className="factory-config">
+          <label htmlFor="factoryAddress">Factory Contract Address:</label>
+          <input
+            id="factoryAddress"
+            type="text"
+            value={factoryAddress}
+            onChange={handleFactoryAddressChange}
+            placeholder="0x..."
+          />
+          {validationErrors.factory && <span className="error">{validationErrors.factory}</span>}
+        </div>
+      )}
 
       <main className="app-main">
         {renderActiveTab()}

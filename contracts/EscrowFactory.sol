@@ -5,21 +5,26 @@ import "./NotaryMediatedEscrow.sol";
 
 contract EscrowFactory {
     
-    address public doddyNotary; // Default notary (Doddy)
+    address public doddyNotary;
     address[] public escrowContracts;
     mapping(address => bool) public isEscrowContract;
     mapping(address => address[]) public userEscrows;
     
-    // Owner management
     address public owner;
     mapping(address => bool) public isOwner;
+    mapping(address => bool) public isAdmin;
     
-    // Default multi-sig owners for new escrows
     address[] public defaultOwners;
     uint public defaultNumConfirmationsRequired;
     address public sizlandTreasury;
     
-    // Events
+    uint public constant MAX_BATCH_SIZE = 50;
+    uint public constant MAX_FACILITATION_FEE_BP = 500;
+    
+    mapping(bytes32 => uint) public pendingActions;
+    uint public actionDelay = 2 days;
+    mapping(address => uint) public adminTransfers;
+    
     event EscrowCreated(
         address indexed escrowContract,
         address indexed client,
@@ -31,6 +36,10 @@ contract EscrowFactory {
     event DoddyNotaryUpdated(address oldNotary, address newNotary);
     event DefaultOwnersUpdated(address[] newOwners);
     event DefaultConfirmationsUpdated(uint newConfirmations);
+    event PendingActionCreated(bytes32 actionId, string actionType, uint executeAfter);
+    event PendingActionExecuted(bytes32 actionId);
+    event PendingActionCancelled(bytes32 actionId);
+    event TreasuryUpdated(address oldTreasury, address newTreasury);
     
     constructor(
         address _doddyNotary,
@@ -108,6 +117,7 @@ contract EscrowFactory {
         uint[] memory _totalAmounts
     ) public returns (address[] memory) {
         require(_sellers.length == _notaries.length && _notaries.length == _totalAmounts.length, "Array length mismatch");
+        require(_sellers.length <= MAX_BATCH_SIZE, "Batch size exceeds maximum");
         
         address[] memory newEscrows = new address[](_sellers.length);
         
@@ -140,16 +150,50 @@ contract EscrowFactory {
     }
     
     /**
-     * @dev Update Doddy's notary address (admin function)
+     * @dev Update Doddy's notary address (admin function with timelock)
      */
     function updateDoddyNotary(address _newDoddy) public {
         require(msg.sender == doddyNotary || isOwner[msg.sender], "Only Doddy or owner can update");
         require(_newDoddy != address(0), "Invalid address");
         
+        bytes32 actionId = keccak256(abi.encodePacked("UPDATE_NOTARY", _newDoddy, block.timestamp));
+        
+        if (isOwner[msg.sender]) {
+            pendingActions[actionId] = block.timestamp + actionDelay;
+            emit PendingActionCreated(actionId, "UPDATE_NOTARY", pendingActions[actionId]);
+        } else {
+            address oldDoddy = doddyNotary;
+            doddyNotary = _newDoddy;
+            emit DoddyNotaryUpdated(oldDoddy, _newDoddy);
+        }
+    }
+    
+    /**
+     * @dev Execute pending notary update
+     */
+    function executePendingNotaryUpdate(address _newDoddy) public {
+        require(isOwner[msg.sender], "Only owner can execute");
+        
+        bytes32 actionId = keccak256(abi.encodePacked("UPDATE_NOTARY", _newDoddy, 0));
+        require(pendingActions[actionId] != 0 && pendingActions[actionId] <= block.timestamp, "Action not ready");
+        
         address oldDoddy = doddyNotary;
         doddyNotary = _newDoddy;
+        delete pendingActions[actionId];
         
         emit DoddyNotaryUpdated(oldDoddy, _newDoddy);
+        emit PendingActionExecuted(actionId);
+    }
+    
+    /**
+     * @dev Cancel pending action
+     */
+    function cancelPendingAction(bytes32 _actionId) public {
+        require(isOwner[msg.sender], "Only owner can cancel");
+        require(pendingActions[_actionId] != 0, "Action not pending");
+        
+        delete pendingActions[_actionId];
+        emit PendingActionCancelled(_actionId);
     }
     
     /**
@@ -172,6 +216,36 @@ contract EscrowFactory {
         
         defaultNumConfirmationsRequired = _newConfirmations;
         emit DefaultConfirmationsUpdated(_newConfirmations);
+    }
+    
+    /**
+     * @dev Update treasury address (admin function with timelock)
+     */
+    function updateTreasury(address _newTreasury) public {
+        require(isOwner[msg.sender], "Only owner can update");
+        require(_newTreasury != address(0), "Invalid treasury address");
+        
+        bytes32 actionId = keccak256(abi.encodePacked("UPDATE_TREASURY", _newTreasury, block.timestamp));
+        
+        pendingActions[actionId] = block.timestamp + actionDelay;
+        emit PendingActionCreated(actionId, "UPDATE_TREASURY", pendingActions[actionId]);
+    }
+    
+    /**
+     * @dev Execute pending treasury update
+     */
+    function executePendingTreasuryUpdate(address _newTreasury) public {
+        require(isOwner[msg.sender], "Only owner can execute");
+        
+        bytes32 actionId = keccak256(abi.encodePacked("UPDATE_TREASURY", _newTreasury, 0));
+        require(pendingActions[actionId] != 0 && pendingActions[actionId] <= block.timestamp, "Action not ready");
+        
+        address oldTreasury = sizlandTreasury;
+        sizlandTreasury = _newTreasury;
+        delete pendingActions[actionId];
+        
+        emit TreasuryUpdated(oldTreasury, _newTreasury);
+        emit PendingActionExecuted(actionId);
     }
     
     /**
