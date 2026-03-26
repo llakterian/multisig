@@ -1,0 +1,386 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=1in}
+
+\definecolor{darkblue}{RGB}{0,51,102}
+\definecolor{lightblue}{RGB}{51,153,204}
+\definecolor{sectionblue}{RGB}{0,82,147}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{green}{RGB}{0,128,0}
+
+\hypersetup{colorlinks=true, linkcolor=blue, filecolor=magenta, urlcolor=cyan}
+
+\titleformat{\section}{\normalfont\Large\bfseries\color{sectionblue}}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\color{sectionblue}}{}{0pt}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{}{0pt}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{README}
+\fancyhead[R]{Escrow Platform}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+\vspace*{1in}
+\begin{center}
+\textcolor{sectionblue}{\Huge\scshape The Land Acquisition Workflow}\\[0.5in]
+
+\textsc{\large A proprietary P2P/Escrow interface}\\[0.3in]
+\textit{bridging blockchain logic with real-world legal milestones for land purchases}\\[1in]
+
+\textbf{Document Version 1.0}\\
+\textbf{March 26, 2026}
+\end{center}
+\end{titlepage}
+
+\newpage
+
+\section{System Architecture}
+
+\subsection{Core Components}
+\begin{enumerate}
+\item \textbf{MultiSigWallet.sol} - Base multi-signature wallet implementation
+\item \textbf{NotaryMediatedEscrow.sol} - Main escrow contract with milestone-based releases
+\item \textbf{EscrowFactory.sol} - Factory for modular escrow deployment
+\item \textbf{Frontend Interface} - React-based 4-phase workflow UI
+\item \textbf{Document Hashing System} - IPFS + on-chain verification
+\end{enumerate}
+
+\subsection{Key Features}
+\begin{itemize}
+\item \textbf{Multi-Sig Security}: Requires multiple confirmations for fund releases
+\item \textbf{Notary Oracle}: Legal Notary verifies legal milestones before fund releases
+\item \textbf{Document Hashing}: All legal documents hashed on-chain for verification
+\item \textbf{4-Phase Workflow}: Discovery → Safety Gate → Execution → Final Settlement
+\item \textbf{Escrow Factory}: Modular deployment for any land purchase
+\end{itemize}
+
+\section{Quick Start}
+
+\subsection{Prerequisites}
+\begin{itemize}
+\item Node.js >= 16.0.0
+\item Hardhat development environment
+\item MetaMask or compatible Web3 wallet
+\end{itemize}
+
+\subsection{Installation}
+\begin{verbatim}
+# Clone the repository
+git clone <repository-url>
+cd multisig
+
+# Install dependencies
+npm install
+
+# Compile contracts
+npx hardhat compile
+
+# Run tests
+npx hardhat test
+
+# Deploy contracts
+npx hardhat run scripts/deploy.js --network localhost
+\end{verbatim}
+
+\subsection{Frontend Setup}
+\begin{verbatim}
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+\end{verbatim}
+
+\section{4-Phase Workflow}
+
+\subsection{Phase 1: Discovery \& Lock-up}
+\begin{itemize}
+\item \textbf{User Action}: Client deposits total budget (e.g., \$5,000) into Treasury
+\item \textbf{System Action}: Funds are locked in multi-sig
+\item \textbf{UI Component}: Curated list of ``Digital Proofs'' (Geo-tagged photos/videos)
+\end{itemize}
+
+\subsection{Phase 2: Safety Gate (\$200 Due Diligence)}
+\begin{itemize}
+\item \textbf{Condition}: First milestone of \$200 unlocked for plot selection
+\item \textbf{Backend Logic}: Goes to Legal Notary's wallet for Registry Search and site visit
+\item \textbf{UI Component}: ``Document Vault'' for viewing Registry Search and Site Visit Report
+\end{itemize}
+
+\subsection{Phase 3: Execution (Commitment Milestone)}
+\begin{itemize}
+\item \textbf{Condition}: Both parties sign draft agreement on-platform
+\item \textbf{On-Platform Signing}: Client or seller uploads draft, both parties sign with real-time notifications
+\item \textbf{Notary Role}: Legal Notary verifies signed documents and clicks ``Proceed to Next Step''
+\item \textbf{Smart Contract Action}: Release percentage-based deposit to seller after notarization
+\item \textbf{UI Component}: Document signing system with party status tracking
+\end{itemize}
+
+\subsection{Phase 4: Final Settlement \& Notary Release}
+\begin{itemize}
+\item \textbf{Condition}: Legal Notary confirms Original Title and LCB Consents
+\item \textbf{Smart Contract Action}: Release balance to seller + facilitation fee.
+\item \textbf{UI Component}: ``Finalization Status'' showing transfer progress
+\end{itemize}
+
+\section{Smart Contract Details}
+
+\subsection{NotaryMediatedEscrow.sol - Key Functions}
+\begin{verbatim}
+// Create new escrow
+function createEscrow(address _seller, address _notary, uint _totalAmount) returns (uint)
+
+// Fund escrow with total amount
+function fundEscrow(uint _escrowId) payable
+
+// Upload draft sale agreement (client or seller)
+function uploadDraftAgreement(uint _escrowId, bytes32 _hash)
+
+// Sign document on platform (both parties)
+function signDocument(uint _escrowId, DocumentType _docType)
+
+// Notarize signed document and proceed (notary only)
+function notarizeSignedDocument(uint _escrowId, DocumentType _docType)
+
+// Upload other documents (notary only)
+function uploadDocument(uint _escrowId, DocumentType _docType, bytes32 _hash)
+
+// Finalize transfer (notary only)
+function finalizeTransfer(uint _escrowId)
+\end{verbatim}
+
+\subsection{Milestone Structure}
+\begin{verbatim}
+enum Milestone { 
+    DueDiligence,    // $200 for registry search and site visit
+    Deposit,         // Percentage-based deposit to seller
+    FinalSettlement  // Balance + facilitation fee
+}
+\end{verbatim}
+
+\subsection{Document Types}
+\begin{verbatim}
+enum DocumentType { 
+    RegistrySearch, 
+    SiteVisitReport, 
+    DraftSaleAgreement,
+    SignedSaleAgreement,
+    OriginalTitle, 
+    LCBConsent
+}
+
+enum SigningStatus { 
+    NotStarted, 
+    Draft, 
+    ClientSigned, 
+    SellerSigned, 
+    BothSigned, 
+    NotaryVerified 
+}
+\end{verbatim}
+
+\subsection{EscrowFactory.sol - Key Functions}
+\begin{verbatim}
+// Create escrow with default notary
+function createEscrowWithNotary(address _seller, uint _totalAmount) returns (address)
+
+// Create escrow with custom notary
+function createEscrow(address _seller, address _notary, uint _totalAmount) returns (address)
+
+// Batch create multiple escrows
+function createBatchEscrows(address[] memory _sellers, address[] memory _notaries, uint[] memory _totalAmounts) returns (address[])
+\end{verbatim}
+
+\section{Frontend Components}
+
+\subsection{Main Interface}
+\begin{itemize}
+\item \textbf{EscrowInterface.jsx} - Main dashboard with phase navigation
+\item \textbf{ProgressBar.jsx} - Real-time progress tracking
+\item \textbf{MultiSigVerification.jsx} - Transaction confirmation interface
+\end{itemize}
+
+\subsection{Phase Components}
+\begin{itemize}
+\item \textbf{DiscoveryPhase.jsx} - Property selection and fund locking
+\item \textbf{SafetyGatePhase.jsx} - Due diligence document verification
+\item \textbf{ExecutionPhase.jsx} - Sale agreement confirmation and deposit release
+\item \textbf{FinalSettlementPhase.jsx} - Title verification and final settlement
+\end{itemize}
+
+\section{Security Features}
+
+\subsection{Multi-Sig Verification}
+\begin{itemize}
+\item All fund releases require multiple confirmations
+\item Configurable number of required signatures
+\item Transaction queue with status tracking
+\end{itemize}
+
+\subsection{Document Hashing}
+\begin{itemize}
+\item SHA-256 hashing of all legal documents
+\item On-chain storage of document hashes
+\item IPFS storage for original documents
+\item Public verification capability
+\end{itemize}
+
+\subsection{Condition Hooks}
+\begin{itemize}
+\item Progress bar with real-time status updates
+\item Multi-sig verification for fund releases
+\item Document hashing verification before payments
+\item State-based access control
+\end{itemize}
+
+\section{Financial Flow}
+
+\subsection{Fee Structure}
+\begin{verbatim}
+Total Purchase Amount: $5,000
+├── Due Diligence Fee: $200 (4%)
+├── Deposit (10%): $500
+├── Final Balance: $4,200
+└── Facilitation Fee: $100 (2% of total)
+\end{verbatim}
+
+\subsection{Release Schedule}
+\begin{enumerate}
+\item \$200 → Legal Notary (Due Diligence)
+\item \$500 → Seller (Deposit after Sale Agreement)
+\item \$4,200 → Seller (Final Balance after Title Transfer)
+\item \$100 → Facilitation Fee
+\end{enumerate}
+
+\section{Development}
+
+\subsection{Contract Deployment}
+\begin{verbatim}
+# Start local Hardhat network
+npx hardhat node
+
+# Deploy contracts (in separate terminal)
+npx hardhat run scripts/deploy.js --network localhost
+\end{verbatim}
+
+\subsection{Frontend Development}
+\begin{verbatim}
+cd frontend
+npm install
+npm start
+\end{verbatim}
+
+\subsection{Testing}
+\begin{verbatim}
+# Run contract tests
+npx hardhat test
+
+# Run frontend tests
+cd frontend
+npm test
+\end{verbatim}
+
+\section{Configuration}
+
+\subsection{Environment Variables}
+\begin{verbatim}
+# Network Configuration
+NETWORK_ID=1337
+RPC_URL=http://localhost:8545
+
+# Contract Addresses (after deployment)
+MULTISIG_WALLET_ADDRESS=0x...
+NOTARY_MEDIATED_ESCROW_ADDRESS=0x...
+ESCROW_FACTORY_ADDRESS=0x...
+
+# IPFS Configuration
+IPFS_GATEWAY=https://ipfs.io/ipfs/
+
+# Notary Configuration
+LEGAL_NOTARY_ADDRESS=0xNotary123456789012345678901234567890
+TREASURY_ADDRESS=0xTreasury1234567890123456789012345678
+\end{verbatim}
+
+\section{Integration Guide}
+
+\subsection{Backend Integration}
+\begin{enumerate}
+\item Deploy contracts to desired network
+\item Configure EscrowFactory with Legal Notary's address
+\item Set up multi-sig owners
+\item Fund Treasury with initial capital if needed
+\end{enumerate}
+
+\subsection{Frontend Integration}
+\begin{enumerate}
+\item Update contract addresses in App.jsx
+\item Configure Web3 provider for target network
+\item Set up IPFS gateway for document storage
+\item Test wallet integration with MetaMask
+\end{enumerate}
+
+\subsection{Legal Integration}
+\begin{enumerate}
+\item Onboarding authorized notary
+\item Establish document templates for each phase
+\item Set up verification process for legal documents
+\item Create dispute resolution mechanism
+\end{enumerate}
+
+\section{Important Notes}
+
+\subsection{Security Considerations}
+\begin{itemize}
+\item Always verify contract addresses before deployment
+\item Test thoroughly on testnet before mainnet deployment
+\item Ensure proper multi-sig configuration
+\item Regular security audits recommended
+\end{itemize}
+
+\subsection{Legal Compliance}
+\begin{itemize}
+\item Ensure proper licensing for notary services
+\item Comply with local land transfer regulations
+\item Maintain proper audit trails
+\item Consider jurisdiction-specific requirements
+\end{itemize}
+
+\subsection{Operational Requirements}
+\begin{itemize}
+\item Proper notary certification
+\item Treasury must be properly secured
+\item Document verification process must be established
+\item Customer support infrastructure needed
+\end{itemize}
+
+\section{Support}
+
+For technical support or questions:
+\begin{itemize}
+\item Create an issue in the repository
+\item Contact the development team
+\item Review documentation and test cases
+\end{itemize}
+
+\vfill
+\begin{center}
+\textbf{© 2026 Escrow Secure Land Purchase Platform} \\
+\textit{Powered by Ethereum Smart Contracts \& Notary Verification}
+\end{center}
+
+\end{document}
