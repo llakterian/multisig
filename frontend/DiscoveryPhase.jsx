@@ -11,7 +11,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
     {
       id: 1,
       title: 'Beachfront Plot - Paradise Cove',
-      location: 'Sizland Coast',
+      location: 'Coast',
       price: '5000',
       description: 'Prime beachfront location with ocean views',
       images: ['beach1.jpg', 'beach2.jpg'],
@@ -20,7 +20,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
     {
       id: 2,
       title: 'Mountain Retreat - Alpine Heights',
-      location: 'Sizland Mountains',
+      location: 'Mountains',
       price: '7500',
       description: 'Secluded mountain property with panoramic views',
       images: ['mountain1.jpg', 'mountain2.jpg'],
@@ -29,7 +29,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
     {
       id: 3,
       title: 'Urban Development - City Center',
-      location: 'Sizland Downtown',
+      location: 'Downtown',
       price: '10000',
       description: 'Commercial plot in heart of business district',
       images: ['urban1.jpg', 'urban2.jpg'],
@@ -63,7 +63,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
         <div className="fund-section">
           <div className="fund-info">
             <h3>Lock Up Your Budget</h3>
-            <p>Deposit your total budget into the Sizland Treasury to begin the escrow process.</p>
+            <p>Deposit your total budget into the Treasury to begin the escrow process.</p>
             <div className="fund-amount">
               <label>Total Amount (ETH):</label>
               <input
@@ -132,7 +132,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
         <div className="funded-section">
           <div className="success-message">
             <h3> Funds Locked Successfully</h3>
-            <p>Your budget has been secured in the Sizland Multi-sig Treasury.</p>
+            <p>Your budget has been secured in the Multi-sig Treasury.</p>
             <div className="fund-details">
               <p>Amount Locked: {ethers.utils.formatEther(escrow.totalAmount)} ETH</p>
               <p>Escrow Address: {escrow.address}</p>
@@ -142,7 +142,7 @@ const DiscoveryPhase = ({ escrow, onFund, loading }) => {
           {selectedProperty && (
             <div className="next-phase-info">
               <h3>Ready for Phase 2: Safety Gate</h3>
-              <p>Once you select a property, the $200 due diligence milestone will be unlocked for Doddy's verification services.</p>
+              <p>Once you select a property, the $200 due diligence milestone will be unlocked for the notary's verification services.</p>
               <div className="milestone-preview">
                 <div className="milestone-item">
                   <span className="milestone-amount">$200</span>

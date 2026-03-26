@@ -1,4 +1,4 @@
-# Sizland Project - Status Summary
+# Project - Status Summary
 
 ## ✅ Completed Work
 
@@ -26,7 +26,7 @@
 
 **Location**: `/home/c0bw3b/multisig/`
 
-1. **The_Sizland_Land_Acquisition_Workflow.pdf** (129 KB, 16 pages)
+1. **The_Land_Acquisition_Workflow.pdf** (129 KB, 16 pages)
    - Complete 4-phase workflow documentation
    - Smart contract architecture  
    - Financial flows and fee structure
@@ -92,7 +92,7 @@ npm start
 ## 📁 Deliverables Ready
 
 All in `/home/c0bw3b/multisig/`:
-- The_Sizland_Land_Acquisition_Workflow.pdf
+- The_Land_Acquisition_Workflow.pdf
 - Data_Flow_Diagram.pdf
 - README.pdf
 - security_audit_report.md (in artifacts folder)

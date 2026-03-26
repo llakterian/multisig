@@ -32,7 +32,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
       <div className="milestone-info">
         <div className="milestone-header">
           <h3>$200 Safety Gate Milestone</h3>
-          <p>This milestone covers Doddy's verification services including Registry Search and Site Visit.</p>
+          <p>This milestone covers the notary's verification services including Registry Search and Site Visit.</p>
         </div>
         
         <div className="milestone-status">
@@ -41,7 +41,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
           </div>
           {isDueDiligenceComplete && (
             <div className="release-info">
-              <span>$200 released to Doddy's wallet</span>
+              <span>$200 released to notary's wallet</span>
             </div>
           )}
         </div>
@@ -49,7 +49,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
 
       <div className="document-vault">
         <h3>Document Vault</h3>
-        <p>Secure section for viewing and verifying legal documents uploaded by Doddy.</p>
+          <p>Secure section for viewing and verifying legal documents uploaded by the notary.</p>
         
         <div className="document-tabs">
           {Object.entries(documentTypes).map(([key, doc]) => (
@@ -77,7 +77,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
                 <div className="document-info">
                   <p><strong>Document Type:</strong> Registry Search Report</p>
                   <p><strong>Purpose:</strong> Verify property ownership and legal status</p>
-                  <p><strong>Authority:</strong> Sizland Land Registry</p>
+                  <p><strong>Authority:</strong> Land Registry</p>
                   {documentHashes.registry && (
                     <p><strong>Document Hash:</strong> {documentHashes.registry}</p>
                   )}
@@ -121,7 +121,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
                 <div className="document-info">
                   <p><strong>Document Type:</strong> Site Visit Report</p>
                   <p><strong>Purpose:</strong> Physical verification of property boundaries and condition</p>
-                  <p><strong>Inspector:</strong> Doddy (Authorized Notary)</p>
+                  <p><strong>Inspector:</strong> Notary (Authorized)</p>
                   {documentHashes.siteVisit && (
                     <p><strong>Document Hash:</strong> {documentHashes.siteVisit}</p>
                   )}
@@ -162,7 +162,7 @@ const SafetyGatePhase = ({ escrow, onVerify, loading }) => {
             <div className="completed-items">
               <div className="completed-item">[Done] Registry Search verified</div>
               <div className="completed-item">[Done] Site Visit Report verified</div>
-              <div className="completed-item">[Done] $200 released to Doddy</div>
+              <div className="completed-item">[Done] $200 released to Notary</div>
             </div>
           </div>
           

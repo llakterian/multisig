@@ -48,7 +48,7 @@ const ExecutionPhase = ({ escrow, onConfirm, loading, userAddress, userRole }) =
 
       <div className="sale-agreement-section">
         <h3>On-Platform Document Signing</h3>
-        <p>Upload draft agreement, both parties sign on platform, then Doddy notarizes to proceed.</p>
+        <p>Upload draft agreement, both parties sign on platform, then the notary notarizes to proceed.</p>
         
         <div className="agreement-actions">
           <button
@@ -109,7 +109,7 @@ const ExecutionPhase = ({ escrow, onConfirm, loading, userAddress, userRole }) =
                     <strong>Deposit Amount:</strong> {formatAmount(escrow.amounts[1])} ETH
                   </div>
                   <div className="info-item">
-                    <strong>Notary:</strong> Doddy (Authorized)
+                    <strong>Notary:</strong> Notary (Authorized)
                   </div>
                 </div>
               </div>
@@ -236,7 +236,7 @@ const ExecutionPhase = ({ escrow, onConfirm, loading, userAddress, userRole }) =
                 <span className="milestone-amount">
                   {formatAmount(escrow.amounts[3])} ETH
                 </span>
-                <span className="milestone-description">Facilitation Fee to Sizland</span>
+                <span className="milestone-description">Facilitation Fee to Treasury</span>
               </div>
             </div>
           </div>

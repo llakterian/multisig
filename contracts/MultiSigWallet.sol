@@ -19,7 +19,6 @@ contract MultiSigWallet is ReentrancyGuard {
     address[] public owners;
     mapping(address => bool) public isOwner;
     uint public numConfirmationsRequired;
-    address public trustedCaller;
 
     struct Transaction {
         address to;
@@ -35,11 +34,6 @@ contract MultiSigWallet is ReentrancyGuard {
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "not owner");
-        _;
-    }
-    
-    modifier onlyOwnerOrTrusted() {
-        require(isOwner[msg.sender] || msg.sender == trustedCaller, "not authorized");
         _;
     }
 
@@ -78,15 +72,6 @@ contract MultiSigWallet is ReentrancyGuard {
         numConfirmationsRequired = _numConfirmationsRequired;
     }
     
-    event TrustedCallerSet(address indexed newCaller, address indexed setter);
-    
-    function setTrustedCaller(address _trustedCaller) external {
-        require(_trustedCaller != address(0), "Cannot set to zero address");
-        require(trustedCaller == address(0) || msg.sender == trustedCaller, "Already set");
-        trustedCaller = _trustedCaller;
-        emit TrustedCallerSet(_trustedCaller, msg.sender);
-    }
-
     receive() external payable {
         emit Deposit(msg.sender, msg.value);
     }
@@ -95,7 +80,8 @@ contract MultiSigWallet is ReentrancyGuard {
         address _to,
         uint _value,
         bytes memory _data
-    ) external onlyOwnerOrTrusted {
+    ) external onlyOwner {
+        require(_to != address(0), "Invalid destination address");
         uint txIndex = transactions.length;
 
         transactions.push(Transaction({
@@ -146,7 +132,12 @@ contract MultiSigWallet is ReentrancyGuard {
         (bool success, ) = transaction.to.call{value: transaction.value}(
             transaction.data
         );
-        require(success, "tx failed");
+        if (!success) {
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
     }
 
     function executeTransactionExternal(uint _txIndex)
@@ -169,7 +160,12 @@ contract MultiSigWallet is ReentrancyGuard {
         (bool success, ) = transaction.to.call{value: transaction.value}(
             transaction.data
         );
-        require(success, "tx failed");
+        if (!success) {
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
     }
 
     function revokeConfirmation(uint _txIndex)

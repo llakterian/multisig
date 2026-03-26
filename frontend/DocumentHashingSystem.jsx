@@ -332,7 +332,7 @@ const DocumentHashingSystem = ({ escrowAddress, userAddress, isNotary }) => {
           <div className="security-feature">
             <span className="feature-icon"></span>
             <div className="feature-text">
-              <strong>Authorized Upload:</strong> Only Doddy (notary) can upload documents
+              <strong>Authorized Upload:</strong> Only the notary can upload documents
             </div>
           </div>
           

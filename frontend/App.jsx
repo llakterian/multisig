@@ -133,7 +133,7 @@ const App = () => {
       <header className="app-header">
         <div className="header-content">
           <div className="logo">
-            <h1>Sizland Escrow</h1>
+            <h1>Escrow</h1>
             <p>Notary-Mediated Land Purchase Platform</p>
           </div>
 
@@ -211,7 +211,7 @@ const App = () => {
       <footer className="app-footer">
         <div className="footer-content">
           <div className="footer-info">
-            <p>(c) 2024 Sizland Escrow - Secure Land Purchase Platform</p>
+            <p>(c) 2024 Escrow Platform - Secure Land Purchase Platform</p>
             <p>Powered by Ethereum Smart Contracts & Notary Verification</p>
           </div>
 

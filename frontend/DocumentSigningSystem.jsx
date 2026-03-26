@@ -413,7 +413,7 @@ const DocumentSigningSystem = ({
             <div className="step-number">3</div>
             <div className="step-content">
               <h4>Notary Verification</h4>
-              <p>Doddy verifies signatures and notarizes document</p>
+              <p>The notary verifies signatures and notarizes document</p>
             </div>
           </div>
           

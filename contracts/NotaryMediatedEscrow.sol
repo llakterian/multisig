@@ -80,7 +80,6 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         bool verified;
         address uploadedBy;
         SigningStatus signingStatus;
-        mapping(address => bool) hasSigned;
         uint clientSignedAt;
         uint sellerSignedAt;
         uint notaryVerifiedAt;
@@ -90,6 +89,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
     mapping(uint => mapping(Milestone => bool)) public milestoneCompleted;
     mapping(uint => mapping(DocumentType => Document)) public documents;
     mapping(uint => mapping(address => bool)) public partyNotifications;
+    mapping(uint => mapping(DocumentType => mapping(address => bool))) public documentSignatures;
     
     MultiSigWallet public multiSigWallet;
     
@@ -124,7 +124,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
     uint public constant DEFAULT_DEPOSIT_PERCENT = 1000;
     
     uint public escrowCount;
-    address public immutable sizlandTreasury;
+    address public immutable treasury;
     
     modifier onlyClient(uint _escrowId) {
         require(msg.sender == escrows[_escrowId].client, "Only client can call this");
@@ -154,14 +154,13 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
     constructor(
         address[] memory _owners,
         uint _numConfirmationsRequired,
-        address _sizlandTreasury
+        address _treasury
     ) {
-        require(_sizlandTreasury != address(0), "Invalid treasury address");
+        require(_treasury != address(0), "Invalid treasury address");
         require(_owners.length > 0, "Owners required");
         
-        sizlandTreasury = _sizlandTreasury;
+        treasury = _treasury;
         multiSigWallet = new MultiSigWallet(_owners, _numConfirmationsRequired);
-        multiSigWallet.setTrustedCaller(address(this));
     }
     
     function createIntake(
@@ -216,7 +215,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         string[] calldata _photos,
         string[] calldata _videos
     ) external validEscrow(_escrowId) {
-        require(msg.sender == sizlandTreasury, "Only Sizland admin can upload gallery");
+        require(msg.sender == treasury, "Only admin can upload gallery");
         require(escrows[_escrowId].state == EscrowState.Intake, "Wrong state");
         
         escrows[_escrowId].state = EscrowState.Discovery;
@@ -294,10 +293,10 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         EscrowTransaction storage escrow = escrows[_escrowId];
         require(_docType == DocumentType.DraftSaleAgreement, "Can only sign draft agreement");
         require(msg.sender == escrow.client || msg.sender == escrow.seller, "Only parties can sign");
-        require(!documents[_escrowId][_docType].hasSigned[msg.sender], "Already signed");
+        require(!documentSignatures[_escrowId][_docType][msg.sender], "Already signed");
         
         Document storage doc = documents[_escrowId][_docType];
-        doc.hasSigned[msg.sender] = true;
+        documentSignatures[_escrowId][_docType][msg.sender] = true;
         
         string memory signerRole = msg.sender == escrow.client ? "Client" : "Seller";
         
@@ -314,7 +313,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         address otherParty = msg.sender == escrow.client ? escrow.seller : escrow.client;
         _notifyParty(_escrowId, otherParty, string(abi.encodePacked(signerRole, " has signed the agreement")));
         
-        if (doc.hasSigned[escrow.client] && doc.hasSigned[escrow.seller]) {
+        if (documentSignatures[_escrowId][_docType][escrow.client] && documentSignatures[_escrowId][_docType][escrow.seller]) {
             doc.signingStatus = SigningStatus.BothSigned;
             emit BothPartiesSigned(_escrowId, _docType);
             _notifyParty(_escrowId, escrow.notary, "Both parties have signed the agreement - ready for notarization");
@@ -513,7 +512,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         // Update state BEFORE external call (Fixes reentrancy vulnerability)
         if (!escrow.facilitationFeeReleased && escrow.facilitationFee > 0) {
             escrow.facilitationFeeReleased = true;
-            _releaseFunds(_escrowId, sizlandTreasury, escrow.facilitationFee);
+            _releaseFunds(_escrowId, treasury, escrow.facilitationFee);
         }
         
         emit TitleIssued(_escrowId, _titleHash, _courierTracking);
@@ -527,7 +526,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         emit FundsReleased(_escrowId, Milestone.FinalSettlement, _recipient, _amount);
     }
     
-    receive() external payable {
+    receive() external payable nonReentrant {
         // Accept ETH - forward to multi-sig
         (bool success, ) = address(multiSigWallet).call{value: msg.value}("");
         require(success, "Forward to multi-sig failed");

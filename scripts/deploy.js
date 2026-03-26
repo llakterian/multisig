@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Deploying Sizland Notary-Mediated Escrow System...\n");
+  console.log("Deploying Notary-Mediated Escrow System...\n");
 
   // Get deployer account
   const [deployer] = await ethers.getSigners();
@@ -52,7 +52,7 @@ async function main() {
   // Create a test escrow
   console.log("\nStep 4: Creating test escrow contract...");
   const testAmount = ethers.utils.parseEther("5.0");
-  const createTx = await escrowFactory.createEscrowWithDoddy(testSeller, testAmount);
+  const createTx = await escrowFactory.createEscrowWithDefaultNotary(testSeller, testAmount);
   const receipt = await createTx.wait();
   const escrowCreatedEvent = receipt.events.find(e => e.event === "EscrowCreated");
   const testEscrowAddress = escrowCreatedEvent.args.escrowContract;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { NotaryMediatedEscrow, EscrowFactory } from '../contracts';
+import { NotaryMediatedEscrow, EscrowFactory } from './contracts';
 
 const EscrowInterface = ({ factoryAddress, userAddress }) => {
   const [escrows, setEscrows] = useState([]);
@@ -59,7 +59,7 @@ const EscrowInterface = ({ factoryAddress, userAddress }) => {
       const signer = provider.getSigner();
       const factoryWithSigner = factory.connect(signer);
       
-      const tx = await factoryWithSigner.createEscrowWithDoddy(sellerAddress, totalAmount);
+      const tx = await factoryWithSigner.createEscrowWithDefaultNotary(sellerAddress, totalAmount);
       await tx.wait();
       
       await loadUserEscrows(factory, userAddress);
@@ -159,7 +159,7 @@ const EscrowInterface = ({ factoryAddress, userAddress }) => {
 
   return (
     <div className="escrow-interface">
-      <h1>Sizland Notary-Mediated Escrow</h1>
+      <h1>Notary-Mediated Escrow</h1>
       
       {/* Phase Progress Bar */}
       <div className="phase-progress">

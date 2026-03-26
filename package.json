@@ -1,5 +1,5 @@
 {
-  "name": "sizland-escrow-system",
+  "name": "escrow-system",
   "version": "1.0.0",
   "description": "Notary-Mediated Land Purchase Platform with Multi-Sig Security",
   "main": "index.js",
@@ -18,7 +18,7 @@
     "multisig",
     "solidity"
   ],
-  "author": "Sizland",
+  "author": "Llakterian",
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",

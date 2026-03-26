@@ -1,11 +1,11 @@
-# Sizland Land Acquisition System - Final Walkthrough
+# Land Acquisition System - Final Walkthrough
 
-This walkthrough documents the successful audit, enhancement, and testing of the Sizland Notary-Mediated Escrow System.
+This walkthrough documents the successful audit, enhancement, and testing of the Notary-Mediated Escrow System.
 
 ## 1. Project Enhancements
 
 ### Customizable Financial Flow
-Based on user feedback, the system now supports negotiated rates for deposits and facilitation fees. The Notary (Doddy) can set these percentages after a successful Due Diligence process.
+Based on user feedback, the system now supports negotiated rates for deposits and facilitation fees. The Notary can set these percentages after a successful Due Diligence process.
 
 ```solidity
 // Notary sets new rates: 15% deposit, 3% facilitation fee
@@ -28,7 +28,7 @@ The system was deployed and tested on a local Hardhat network (`127.0.0.1:8545`)
 ### Deployment Output
 
 ```text
-Deploying Sizland Notary-Mediated Escrow System...
+Deploying Notary-Mediated Escrow System...
 
 Step 1: Deploying MultiSigWallet...
 MultiSigWallet deployed to: 0x3Aa...
@@ -78,6 +78,6 @@ We executed a simulated end-to-end land purchase:
 ---
 
 ## Summary
-The Sizland Land Acquisition system is now a robust, professionally audited project ready for further development or testnet launch. The addition of customizable rates makes it flexible enough for real-world real estate negotiations.
+The Land Acquisition system is now a robust, professionally audited project ready for further development or testnet launch.
 
 **Project Deliverables finalized.**

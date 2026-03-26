@@ -30,7 +30,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
       <div className="milestone-info">
         <div className="milestone-header">
           <h3>Final Settlement Milestone</h3>
-          <p>Upon title verification, the balance will be released to the seller and facilitation fee to Sizland.</p>
+            <p>Upon title verification, the balance will be released to the seller and facilitation fee to Treasury.</p>
         </div>
         
         <div className="milestone-status">
@@ -47,7 +47,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
                 <span>{formatAmount(escrow.amounts[2])} ETH -> Seller</span>
               </div>
               <div className="release-item">
-                <span>{formatAmount(escrow.amounts[3])} ETH -> Sizland Treasury</span>
+                <span>{formatAmount(escrow.amounts[3])} ETH -> Treasury</span>
               </div>
             </div>
           )}
@@ -56,7 +56,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
 
       <div className="document-verification">
         <h3>Final Document Verification</h3>
-        <p>Doddy must confirm possession of Original Title and LCB Consents before final release.</p>
+          <p>The notary must confirm possession of Original Title and LCB Consents before final release.</p>
         
         <div className="documents-grid">
           <div className="document-card">
@@ -92,7 +92,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
                       <strong>Owner:</strong> {escrow.seller}
                     </div>
                     <div className="info-item">
-                      <strong>Issued:</strong> Sizland Land Registry
+                      <strong>Issued:</strong> Land Registry
                     </div>
                     <div className="info-item">
                       <strong>Date:</strong> January 15, 2024
@@ -188,7 +188,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
             </div>
             <div className="timeline-content">
               <div className="timeline-title">Title Verified</div>
-              <div className="timeline-desc">Original title confirmed by Doddy</div>
+              <div className="timeline-desc">Original title confirmed by the notary</div>
             </div>
           </div>
           
@@ -218,7 +218,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
         <div className="release-ready">
           <div className="ready-message">
             <h3> Ready for Final Release</h3>
-            <p>All documents have been verified. Doddy can now initiate the final settlement.</p>
+            <p>All documents have been verified. The notary can now initiate the final settlement.</p>
             <div className="release-summary">
               <div className="release-item">
                 <span className="release-amount">{formatAmount(escrow.amounts[2])} ETH</span>
@@ -226,11 +226,11 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
               </div>
               <div className="release-item">
                 <span className="release-amount">{formatAmount(escrow.amounts[3])} ETH</span>
-                <span className="release-recipient">-> Sizland (Facilitation Fee)</span>
+                <span className="release-recipient">-> Treasury (Facilitation Fee)</span>
               </div>
             </div>
             <div className="note">
-              <p> Note: Final release requires Doddy's confirmation via smart contract.</p>
+              <p> Note: Final release requires the notary's confirmation via smart contract.</p>
             </div>
           </div>
         </div>
@@ -284,7 +284,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
               <ul>
                 <li>Property title has been transferred to your name</li>
                 <li>All legal documents are stored in the Document Vault</li>
-                <li>Physical copies can be collected from Doddy's office</li>
+                <li>Physical copies can be collected from the notary's office</li>
                 <li>Property registration with local authorities completed</li>
               </ul>
             </div>
@@ -310,7 +310,7 @@ const FinalSettlementPhase = ({ escrow, loading }) => {
           <div className="security-item">
             <span className="security-icon"></span>
             <div className="security-text">
-              <strong>Notary Oracle:</strong> Doddy acted as trusted oracle for legal verification
+              <strong>Notary Oracle:</strong> The notary acted as trusted oracle for legal verification
             </div>
           </div>
           <div className="security-item">

@@ -68,7 +68,7 @@ const IntakeDiscoveryPhase = ({
       
       // Mock seller and notary addresses - in production these would be dynamic
       const mockSeller = "0xSeller123456789012345678901234567890";
-      const mockNotary = "0xDoddyNotary123456789012345678901234567890";
+      const mockNotary = "0xNotary123456789012345678901234567890";
       
       const tx = await contractWithSigner.createIntake(
         budgetWei,
@@ -80,7 +80,7 @@ const IntakeDiscoveryPhase = ({
       await tx.wait();
       
       setCurrentStep('discovery');
-      alert('Intake submitted successfully! Sizland team will source options for you.');
+      alert('Intake submitted successfully! Team will source options for you.');
     } catch (error) {
       console.error('Error submitting intake:', error);
       alert('Error submitting intake');
@@ -89,7 +89,7 @@ const IntakeDiscoveryPhase = ({
     }
   };
 
-  // Mock digital gallery data - in production this would come from Sizland admin
+  // Mock digital gallery data - in production this would come from admin
   const mockGallery = [
     {
       id: 1,
@@ -135,12 +135,12 @@ const IntakeDiscoveryPhase = ({
         const signer = contract.provider.getSigner();
         const contractWithSigner = contract.connect(signer);
         
-        // Mock gallery upload by Sizland admin
+        // Mock gallery upload by admin
         const geoPins = mockGallery.map(plot => plot.geoPin);
         const photos = mockGallery.flatMap(plot => plot.photos);
         const videos = mockGallery.flatMap(plot => plot.videos);
         
-        // This would normally be called by Sizland admin
+        // This would normally be called by admin
         await contractWithSigner.uploadDigitalGallery(0, geoPins, photos, videos);
       } catch (error) {
         console.log('Gallery upload simulation');
@@ -336,7 +336,7 @@ const IntakeDiscoveryPhase = ({
           <div className="workflow-step">
             <div className="step-number">2</div>
             <div className="step-content">
-              <h4>Sizland Sources Options</h4>
+              <h4>Team Sources Options</h4>
               <p>Our team finds and vets available properties</p>
             </div>
           </div>

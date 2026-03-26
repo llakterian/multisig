@@ -205,7 +205,7 @@ const NotaryAdminPanel = ({
 
   return (
     <div className="notary-admin-panel">
-      <h1>Sizland Notary Admin Panel</h1>
+      <h1>Notary Admin Panel</h1>
 
       <div className="admin-tabs">
         <button
