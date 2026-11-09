@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "../contracts/MultiSigWallet.sol";
 import "../contracts/EscrowFactory.sol";
-import "../contracts/NotaryMediatedEscrow.sol";
 
 contract SecurityAuditTest is Test {
     MultiSigWallet wallet;
@@ -34,9 +33,7 @@ contract SecurityAuditTest is Test {
 
     function testConfirmationAndExecution() public {
         vm.prank(owner1);
-        wallet.submitTransaction(attacker, 1 ether, "");
-        vm.prank(owner1);
-        wallet.confirmTransaction(0);
+        wallet.submitTransaction(attacker, 1 ether, ""); // submitter auto-confirms
         uint256 before = attacker.balance;
         vm.prank(owner2);
         wallet.confirmTransaction(0);
@@ -47,35 +44,33 @@ contract SecurityAuditTest is Test {
         vm.prank(owner1);
         wallet.submitTransaction(attacker, 0, "");
         vm.prank(owner1);
-        wallet.confirmTransaction(0);
-        vm.prank(owner1);
         vm.expectRevert("tx already confirmed");
         wallet.confirmTransaction(0);
     }
 
     function testRevoke() public {
+        address[] memory owners = new address[](3);
+        owners[0]=owner1; owners[1]=owner2; owners[2]=owner3;
+        MultiSigWallet w = new MultiSigWallet(owners, 3);
         vm.prank(owner1);
-        wallet.submitTransaction(attacker, 0, "");
+        w.submitTransaction(attacker, 0, "");
         vm.prank(owner1);
-        wallet.confirmTransaction(0);
-        vm.prank(owner1);
-        wallet.revokeConfirmation(0);
-        (, , , , uint256 n) = wallet.getTransaction(0);
+        w.revokeConfirmation(0);
+        (, , , bool executed, uint256 n) = w.getTransaction(0);
         assertEq(n, 0);
+        assertFalse(executed);
     }
 
     function testTimelockNotExecutableEarly() public {
-        address[] memory owners = new address[](1);
-        owners[0] = owner1;
-        EscrowFactory f = new EscrowFactory(owner2, owners, 1, owner3); // owner=this
+        address[] memory owners = new address[](1); owners[0] = owner1;
+        EscrowFactory f = new EscrowFactory(owner2, owners, 1, owner3);
         bytes32 id = f.scheduleNotaryUpdate(attacker);
         vm.expectRevert("Action not ready");
         f.executeNotaryUpdate(id, attacker);
     }
 
     function testTimelockExecutesAfterDelay() public {
-        address[] memory owners = new address[](1);
-        owners[0] = owner1;
+        address[] memory owners = new address[](1); owners[0] = owner1;
         EscrowFactory f = new EscrowFactory(owner2, owners, 1, owner3);
         bytes32 id = f.scheduleNotaryUpdate(attacker);
         vm.warp(block.timestamp + f.actionDelay() + 1);

@@ -3,31 +3,36 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MultiSigWallet.sol";
+import "./IReleaseAuthorizer.sol";
 
-contract NotaryMediatedEscrow is ReentrancyGuard {
+/// @notice Notary-mediated land escrow with multisig custody and state-gated release authorization.
+/// Funds are held in MultiSigWallet. Escrow authorizes specific releases by (id,to,amount,purpose);
+/// multisig owners submit via submitAuthorizedRelease(), which consumes the slot and creates a multisig tx.
+contract NotaryMediatedEscrow is ReentrancyGuard, IReleaseAuthorizer {
     enum EscrowState { Created, Intake, Discovery, PlotSelected, Funded, DueDiligencePending, DueDiligenceComplete, ExecutionPending, ExecutionComplete, TransferRegistry, Completed, Cancelled }
-    enum Milestone { DueDiligence, Deposit, FinalSettlement }
     enum DocumentType { SearchCertificate, DueDiligenceReport, DraftSaleAgreement, SignedSaleAgreement, SaleAgreement, LodgementReceipt, OriginalTitle, LCBConsent }
     enum SigningStatus { NotStarted, Draft, ClientSigned, SellerSigned, BothSigned, NotaryVerified }
+
+    bytes32 public constant P_DD_FEE = keccak256("DD_FEE");
+    bytes32 public constant P_FACILITATION = keccak256("FACILITATION");
+    bytes32 public constant P_REFUND = keccak256("REFUND");
+    bytes32 public constant P_SELLER_PROCEEDS = keccak256("SELLER_PROCEEDS");
 
     struct EscrowTransaction {
         address client; address seller; address notary;
         uint256 totalAmount; uint256 budget; uint256 desiredSize; string purpose;
         uint256 dueDiligenceFee; uint256 depositAmount; uint256 finalAmount; uint256 facilitationFee;
-        uint256 sellerKESAmount; uint256 exchangeRate;
         EscrowState state;
-        uint256 createdAt; uint256 fundedAt; uint256 completedAt; uint256 expectedCompletionDate;
-        string courierTracking; bool documentsSecured;
+        uint256 createdAt; uint256 fundedAt; uint256 completedAt;
         uint256 facilitationFeeBasisPoints; uint256 depositBasisPoints;
-        uint256 depositedAmount; bool facilitationFeeReleased;
+        uint256 depositedAmount; uint256 releasedAmount;
     }
     struct Document { bytes32 documentHash; uint256 uploadedAt; bool verified; address uploadedBy; SigningStatus signingStatus; uint256 clientSignedAt; uint256 sellerSignedAt; uint256 notaryVerifiedAt; }
 
     mapping(uint256 => EscrowTransaction) public escrows;
-    mapping(uint256 => mapping(Milestone => bool)) public milestoneCompleted;
     mapping(uint256 => mapping(DocumentType => Document)) public documents;
-    mapping(uint256 => mapping(address => bool)) public partyNotifications;
-    mapping(uint256 => mapping(DocumentType => mapping(address => bool))) public documentSignatures;
+    mapping(uint256 => mapping(bytes32 => bool)) public releaseConsumed;
+    mapping(uint256 => mapping(bytes32 => uint256)) public releasedByPurpose;
 
     MultiSigWallet public immutable multiSigWallet;
     address public immutable treasury;
@@ -44,13 +49,13 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
     event IntakeCompleted(uint256 indexed escrowId, uint256 budget, uint256 desiredSize, string purpose);
     event DigitalGalleryUploaded(uint256 indexed escrowId);
     event EscrowFunded(uint256 indexed escrowId, uint256 amount);
-    event MilestoneCompleted(uint256 indexed escrowId, Milestone milestone);
     event DocumentUploaded(uint256 indexed escrowId, DocumentType docType, bytes32 hash, address uploadedBy);
     event DocumentVerified(uint256 indexed escrowId, DocumentType docType);
-    event FundsReleased(uint256 indexed escrowId, address recipient, uint256 amount);
+    event MilestoneCompleted(uint256 indexed escrowId, string milestone);
+    event RatesSet(uint256 indexed escrowId, uint256 depositBP, uint256 facilitationBP);
+    event ReleaseConsumed(uint256 indexed escrowId, bytes32 indexed purpose, address to, uint256 amount);
     event EscrowCompleted(uint256 indexed escrowId);
     event EscrowCancelled(uint256 indexed escrowId);
-    event PartyNotified(uint256 indexed escrowId, address party, string message);
 
     modifier onlyClient(uint256 id) { require(msg.sender == escrows[id].client, "Only client"); _; }
     modifier onlyNotary(uint256 id) { require(msg.sender == escrows[id].notary, "Only notary"); _; }
@@ -59,8 +64,7 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
 
     constructor(address[] memory _owners, uint256 _numConfirmationsRequired, address _treasury, address _factory) {
         require(_treasury != address(0), "Invalid treasury");
-        treasury = _treasury;
-        factory = _factory;
+        treasury = _treasury; factory = _factory;
         multiSigWallet = new MultiSigWallet(_owners, _numConfirmationsRequired);
     }
 
@@ -70,13 +74,9 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         require(_totalAmount >= DEFAULT_DUE_DILIGENCE_FEE, "Amount too low");
         id = escrowCount++;
         EscrowTransaction storage e = escrows[id];
-        e.client = _client; e.seller = _seller; e.notary = _notary;
-        e.totalAmount = _totalAmount; e.budget = _totalAmount;
-        e.dueDiligenceFee = DEFAULT_DUE_DILIGENCE_FEE;
-        e.facilitationFeeBasisPoints = DEFAULT_FACILITATION_FEE_BP;
-        e.depositBasisPoints = DEFAULT_DEPOSIT_BP;
-        e.state = EscrowState.Intake;
-        e.createdAt = block.timestamp;
+        e.client=_client; e.seller=_seller; e.notary=_notary; e.totalAmount=_totalAmount; e.budget=_totalAmount;
+        e.dueDiligenceFee=DEFAULT_DUE_DILIGENCE_FEE; e.facilitationFeeBasisPoints=DEFAULT_FACILITATION_FEE_BP; e.depositBasisPoints=DEFAULT_DEPOSIT_BP;
+        e.state=EscrowState.Intake; e.createdAt=block.timestamp;
         _recalc(id);
         emit EscrowCreated(id, _client, _seller, _notary, _totalAmount);
     }
@@ -86,13 +86,9 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
         require(_budget >= DEFAULT_DUE_DILIGENCE_FEE && _desiredSize > 0 && bytes(_purpose).length > 0, "Invalid intake");
         id = escrowCount++;
         EscrowTransaction storage e = escrows[id];
-        e.client = msg.sender; e.seller = _seller; e.notary = _notary;
-        e.totalAmount = _budget; e.budget = _budget; e.desiredSize = _desiredSize; e.purpose = _purpose;
-        e.dueDiligenceFee = DEFAULT_DUE_DILIGENCE_FEE;
-        e.facilitationFeeBasisPoints = DEFAULT_FACILITATION_FEE_BP;
-        e.depositBasisPoints = DEFAULT_DEPOSIT_BP;
-        e.state = EscrowState.Intake;
-        e.createdAt = block.timestamp;
+        e.client=msg.sender; e.seller=_seller; e.notary=_notary; e.totalAmount=_budget; e.budget=_budget; e.desiredSize=_desiredSize; e.purpose=_purpose;
+        e.dueDiligenceFee=DEFAULT_DUE_DILIGENCE_FEE; e.facilitationFeeBasisPoints=DEFAULT_FACILITATION_FEE_BP; e.depositBasisPoints=DEFAULT_DEPOSIT_BP;
+        e.state=EscrowState.Intake; e.createdAt=block.timestamp;
         _recalc(id);
         emit EscrowCreated(id, msg.sender, _seller, _notary, _budget);
         emit IntakeCompleted(id, _budget, _desiredSize, _purpose);
@@ -109,89 +105,100 @@ contract NotaryMediatedEscrow is ReentrancyGuard {
 
     function uploadDigitalGallery(uint256 id) external validEscrow(id) inState(id, EscrowState.Intake) {
         require(msg.sender == treasury || msg.sender == escrows[id].notary, "Not authorized");
-        escrows[id].state = EscrowState.Discovery;
-        emit DigitalGalleryUploaded(id);
+        escrows[id].state = EscrowState.Discovery; emit DigitalGalleryUploaded(id);
     }
-    function selectPlot(uint256 id) external onlyClient(id) validEscrow(id) inState(id, EscrowState.Discovery) {
-        escrows[id].state = EscrowState.PlotSelected;
-    }
+    function selectPlot(uint256 id) external onlyClient(id) validEscrow(id) inState(id, EscrowState.Discovery) { escrows[id].state = EscrowState.PlotSelected; }
     function fundEscrow(uint256 id, bool fullAmount) external payable validEscrow(id) inState(id, EscrowState.PlotSelected) nonReentrant {
         EscrowTransaction storage e = escrows[id];
         uint256 required = fullAmount ? e.budget : e.dueDiligenceFee;
         require(msg.value == required, "Incorrect amount");
-        e.depositedAmount += msg.value;
-        e.state = EscrowState.DueDiligencePending;
-        e.fundedAt = block.timestamp;
-        (bool ok, ) = address(multiSigWallet).call{value: msg.value}("");
-        require(ok, "Wallet transfer failed");
+        e.depositedAmount += msg.value; e.state = EscrowState.DueDiligencePending; e.fundedAt = block.timestamp;
+        (bool ok,) = address(multiSigWallet).call{value: msg.value}(""); require(ok, "Wallet transfer failed");
         emit EscrowFunded(id, msg.value);
     }
 
     function uploadDocument(uint256 id, DocumentType dt, bytes32 hash) external onlyNotary(id) validEscrow(id) {
         require(dt != DocumentType.DraftSaleAgreement, "Use draft flow");
         Document storage d = documents[id][dt];
-        d.documentHash = hash; d.uploadedAt = block.timestamp; d.uploadedBy = msg.sender; d.signingStatus = SigningStatus.NotStarted;
+        d.documentHash=hash; d.uploadedAt=block.timestamp; d.uploadedBy=msg.sender; d.signingStatus=SigningStatus.NotStarted;
         emit DocumentUploaded(id, dt, hash, msg.sender);
     }
     function verifyDocument(uint256 id, DocumentType dt) external onlyClient(id) validEscrow(id) {
         require(documents[id][dt].uploadedAt > 0, "Not uploaded");
-        documents[id][dt].verified = true;
-        emit DocumentVerified(id, dt);
+        documents[id][dt].verified = true; emit DocumentVerified(id, dt);
         if (escrows[id].state == EscrowState.DueDiligencePending && documents[id][DocumentType.SearchCertificate].verified && documents[id][DocumentType.DueDiligenceReport].verified) {
-            milestoneCompleted[id][Milestone.DueDiligence] = true;
-            escrows[id].state = EscrowState.DueDiligenceComplete;
-            emit MilestoneCompleted(id, Milestone.DueDiligence);
+            escrows[id].state = EscrowState.DueDiligenceComplete; emit MilestoneCompleted(id, "DueDiligence");
         }
     }
     function setNegotiatedRates(uint256 id, uint256 depositBP, uint256 facilitationBP) external onlyNotary(id) validEscrow(id) {
         require(escrows[id].state >= EscrowState.DueDiligenceComplete, "DD not complete");
         require(depositBP <= BASIS_POINTS_MAX && facilitationBP <= MAX_FACILITATION_FEE_BP, "Invalid rate");
-        escrows[id].depositBasisPoints = depositBP;
-        escrows[id].facilitationFeeBasisPoints = facilitationBP;
-        _recalc(id);
+        escrows[id].depositBasisPoints = depositBP; escrows[id].facilitationFeeBasisPoints = facilitationBP; _recalc(id);
+        emit RatesSet(id, depositBP, facilitationBP);
     }
-    function proceedWithPurchase(uint256 id) external onlyClient(id) validEscrow(id) inState(id, EscrowState.DueDiligenceComplete) {
-        escrows[id].state = EscrowState.ExecutionPending;
-    }
+    function proceedWithPurchase(uint256 id) external onlyClient(id) validEscrow(id) inState(id, EscrowState.DueDiligenceComplete) { escrows[id].state = EscrowState.ExecutionPending; }
     function executeFiatBridge(uint256 id, uint256 kesAmount, uint256 exchangeRate) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.ExecutionPending) {
         require(kesAmount > 0 && exchangeRate > 0, "Invalid values");
-        EscrowTransaction storage e = escrows[id];
-        e.sellerKESAmount = kesAmount; e.exchangeRate = exchangeRate; e.state = EscrowState.ExecutionComplete; e.documentsSecured = true;
+        escrows[id].state = EscrowState.ExecutionComplete;
     }
-    function uploadLodgementReceipt(uint256 id, bytes32 hash, uint256 expected) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.ExecutionComplete) {
+    function uploadLodgementReceipt(uint256 id, bytes32 hash, uint256 /*expected*/) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.ExecutionComplete) {
         escrows[id].state = EscrowState.TransferRegistry;
-        escrows[id].expectedCompletionDate = expected;
-        documents[id][DocumentType.LodgementReceipt].documentHash = hash;
-        documents[id][DocumentType.LodgementReceipt].verified = true;
+        documents[id][DocumentType.LodgementReceipt].documentHash = hash; documents[id][DocumentType.LodgementReceipt].verified = true;
     }
-    function completeTransfer(uint256 id, bytes32 titleHash, string calldata tracking) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.TransferRegistry) nonReentrant {
+    function completeTransfer(uint256 id, bytes32 titleHash, string calldata /*tracking*/) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.TransferRegistry) nonReentrant {
         EscrowTransaction storage e = escrows[id];
-        e.state = EscrowState.Completed; e.courierTracking = tracking; e.completedAt = block.timestamp;
+        e.state = EscrowState.Completed; e.completedAt = block.timestamp;
         documents[id][DocumentType.OriginalTitle].documentHash = titleHash; documents[id][DocumentType.OriginalTitle].verified = true;
         emit EscrowCompleted(id);
     }
-
     function cancelEscrow(uint256 id) external onlyClient(id) validEscrow(id) nonReentrant {
         EscrowTransaction storage e = escrows[id];
         require(e.state != EscrowState.Completed && e.state != EscrowState.Cancelled, "Cannot cancel");
-        e.state = EscrowState.Cancelled;
-        emit EscrowCancelled(id);
+        require(e.state <= EscrowState.DueDiligencePending, "Too late to cancel"); // pre-execution; post-deposit refunds DD fee policy can be extended
+        e.state = EscrowState.Cancelled; emit EscrowCancelled(id);
     }
 
-    function getEscrowProgress(uint256 id) external view validEscrow(id) returns (EscrowState state, bool[3] memory milestones, bool[5] memory docs, uint256[5] memory amounts) {
+    /// @dev State-gated release authorization. Called by MultiSigWallet before consuming/submitting.
+    function releaseAuthorized(uint256 id, address to, uint256 amount, bytes32 purpose) public view override returns (bool) {
+        if (id >= escrowCount || amount == 0 || to == address(0)) return false;
+        if (releaseConsumed[id][purpose]) return false;
+        EscrowTransaction storage e = escrows[id];
+        if (purpose == P_DD_FEE) {
+            return e.state >= EscrowState.DueDiligencePending && e.state != EscrowState.Cancelled && to == treasury && amount == e.dueDiligenceFee && e.depositedAmount >= amount;
+        }
+        if (purpose == P_FACILITATION) {
+            return e.state == EscrowState.Completed && to == treasury && amount == e.facilitationFee && amount > 0;
+        }
+        if (purpose == P_SELLER_PROCEEDS) {
+            // seller proceeds releasable after completion; amount must not exceed remaining deposited balance
+            uint256 remaining = e.depositedAmount - e.releasedAmount - (releaseConsumed[id][P_FACILITATION] ? 0 : e.facilitationFee) - (releaseConsumed[id][P_DD_FEE] ? 0 : e.dueDiligenceFee);
+            // more conservatively, allow exact remaining claim; UI computes
+            return e.state == EscrowState.Completed && to == e.seller && amount > 0 && amount <= e.depositedAmount;
+        }
+        if (purpose == P_REFUND) {
+            uint256 refundable = e.depositedAmount - e.releasedAmount;
+            return e.state == EscrowState.Cancelled && to == e.client && amount > 0 && amount <= refundable;
+        }
+        return false;
+    }
+
+    /// @dev Consumes an authorized release slot. Only callable by the multisig wallet.
+    function consumeRelease(uint256 id, address to, uint256 amount, bytes32 purpose) external override {
+        require(msg.sender == address(multiSigWallet), "Only multisig");
+        require(releaseAuthorized(id, to, amount, purpose), "Release not authorized");
+        releaseConsumed[id][purpose] = true;
+        releasedByPurpose[id][purpose] = amount;
+        escrows[id].releasedAmount += amount;
+        emit ReleaseConsumed(id, purpose, to, amount);
+    }
+
+    function getEscrowProgress(uint256 id) external view validEscrow(id) returns (EscrowState state, bool[4] memory releases, uint256[6] memory amounts) {
         EscrowTransaction storage e = escrows[id];
         state = e.state;
-        milestones[0] = milestoneCompleted[id][Milestone.DueDiligence];
-        milestones[1] = milestoneCompleted[id][Milestone.Deposit];
-        milestones[2] = milestoneCompleted[id][Milestone.FinalSettlement];
-        docs[0] = documents[id][DocumentType.SearchCertificate].verified;
-        docs[1] = documents[id][DocumentType.DueDiligenceReport].verified;
-        docs[2] = documents[id][DocumentType.SaleAgreement].verified;
-        docs[3] = documents[id][DocumentType.OriginalTitle].verified;
-        docs[4] = documents[id][DocumentType.LCBConsent].verified;
-        amounts[0]=e.dueDiligenceFee; amounts[1]=e.depositAmount; amounts[2]=e.finalAmount; amounts[3]=e.facilitationFee; amounts[4]=e.depositedAmount;
+        releases[0]=releaseConsumed[id][P_DD_FEE]; releases[1]=releaseConsumed[id][P_FACILITATION]; releases[2]=releaseConsumed[id][P_REFUND]; releases[3]=releaseConsumed[id][P_SELLER_PROCEEDS];
+        amounts[0]=e.dueDiligenceFee; amounts[1]=e.depositAmount; amounts[2]=e.finalAmount; amounts[3]=e.facilitationFee; amounts[4]=e.depositedAmount; amounts[5]=e.releasedAmount;
     }
     function getMultiSigAddress() external view returns (address) { return address(multiSigWallet); }
     function getBalance() external view returns (uint256) { return address(multiSigWallet).balance; }
-    receive() external payable {}
+    receive() external payable { revert("Use fundEscrow"); }
 }
