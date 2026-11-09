@@ -21,3 +21,13 @@
 
 ## Tests
 `forge test` — 9/9 passing (`SecurityAuditTest`, `WorkflowTest`).
+
+## Fund-release design (implemented)
+**Pattern:** state-gated multisig release submissions (authorization + consume, not raw pull). Custody remains in `MultiSigWallet` (no direct escrow payout). `NotaryMediatedEscrow` implements `IReleaseAuthorizer`:
+- `releaseAuthorized(escrowId,to,amount,purpose)` — pure/state view; checks escrow state, recipient, amount, and that the slot isn’t consumed.
+- `consumeRelease(...)` — **only** callable by the escrow’s `MultiSigWallet`; marks `releaseConsumed[id][purpose]`, records amount, increments `releasedAmount`. Reverts if not authorized.
+- Purposes: `P_DD_FEE` (treasury, `dueDiligenceFee`, after funding, pre-cancel), `P_FACILITATION` (treasury, `facilitationFee`, **Completed**), `P_REFUND` (client, ≤ deposited-released, **Cancelled** pre-execution), `P_SELLER_PROCEEDS` reserved (tighten amount/state before enabling for real disbursement).
+
+`MultiSigWallet.submitAuthorizedRelease(escrow,escrowId,to,value,purpose)` (owner-only): verifies via escrow, consumes slot, submits a value-transfer tx, auto-confirms submitter. Execution follows normal confirmations/threshold (auto-exec at threshold=1). **Properties:** no duplicate release submission (slot consumed), no release when state disallows, multisig owners retain execution control.
+
+**Residual:** Seller proceeds need a finalized disbursement policy (who receives fiat vs on-chain remainder, exact cap). Refund is allowed only in early states (`<= DueDiligencePending`) — extend policy explicitly if post-DD refunds are required. Direct `receive()` on escrow reverts (`Use fundEscrow`).
