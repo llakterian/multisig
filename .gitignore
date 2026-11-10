@@ -1,10 +1,23 @@
+# Dependencies
 node_modules/
-lib/
+app/node_modules/
+
+# Build artifacts
+out/
 cache/
 cache_forge/
 artifacts/
-out/
 broadcast/
-.env
-app/node_modules/
 app/dist/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
