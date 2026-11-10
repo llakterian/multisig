@@ -1,0 +1,95 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+\definecolor{sambagreen}{HTML}{1f4d45}
+\definecolor{sambagold}{HTML}{8a6a2b}
+
+\titleformat{\section}{\Large\bfseries\color{sambagreen}}{Section \thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{sambagold}}{\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\fancyfoot[L]{\small SafeShamba --- Cheru (llakterian) --- \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}}
+\fancyhead[R]{\small \href{https://las.longspear.co.ke}{Longspear}}
+
+\setlength{\headheight}{14pt}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Huge\bfseries\color{sambagreen} SafeShamba\par}
+\vspace{0.5cm}
+{\Large Secure Land Purchase with Multisig Custody\par}
+\vspace{2cm}
+{\large Distributor Guide\par}
+\vspace{3cm}
+{\large Prepared by:\par}
+\vspace{0.3cm}
+{\large\bfseries Cheru Sambu (llakterian)\par}
+{\large \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}\par}
+{\large \href{https://las.longspear.co.ke}{las.longspear.co.ke}\par}
+\vspace{2cm}
+{\large Version 1.0 --- November 2026\par}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Overview}
+This guide explains how to distribute SafeShamba to your clients.
+
+\section{What You're Distributing}
+\begin{itemize}
+\item \textbf{Smart Contracts} --- Audited Solidity contracts (EscrowFactory, NotaryMediatedEscrow, MultiSigWallet)
+\item \textbf{Frontend} --- React application with SafeShamba branding
+\item \textbf{Documentation} --- User manual, deployment guide, security audit
+\item \textbf{License} --- MIT + Commercial Agreement
+\end{itemize}
+
+\section{Distribution Methods}
+\subsection{Method 1: Deploy and Share (Recommended)}
+You deploy the contracts once, then share the frontend URL with clients.
+
+\subsection{Method 2: White-Label Deployment}
+Each client gets their own deployment with custom branding.
+
+\subsection{Method 3: SaaS Platform}
+Host everything yourself and charge a subscription.
+
+\section{Pricing Models}
+Attractive pricing designed for clients:
+\begin{itemize}
+\item \textbf{Free tier} --- Create and manage escrows at no cost
+\item \textbf{0.5\% facilitation fee} --- Only on completed transactions
+\item \textbf{No monthly fees} --- Pay only when you transact
+\item \textbf{Volume discounts} --- Increasing savings as you grow
+\item \textbf{Revenue share} --- 20\% of facilitation fees for distributors
+\end{itemize}
+
+\section{Support Packages}
+\begin{itemize}
+\item \textbf{Basic} --- \$49/month --- Documentation, email support, bug fixes
+\item \textbf{Pro} --- \$149/month --- Everything in Basic, priority support, custom branding
+\item \textbf{Enterprise} --- \$499/month --- Everything in Pro, dedicated manager, SLA
+\end{itemize}
+
+\section{Contact}
+\begin{itemize}
+\item \textbf{Developer:} \href{mailto:llakterian@gmail.com}{llakterian@gmail.com}
+\item \textbf{Distributor:} \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}
+\item \textbf{Website:} \href{https://las.longspear.co.ke}{las.longspear.co.ke}
+\item \textbf{Support:} \href{mailto:support@safeshamba.com}{support@safeshamba.com}
+\end{itemize}
+
+\end{document}
