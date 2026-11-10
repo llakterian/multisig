@@ -336,7 +336,16 @@ For technical support or questions:
 - Contact the development team
 - Review documentation and test cases
 
+## License
+
+This project is licensed under the **MIT License** for open-source use. For commercial deployment, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
+
+## Contact
+
+- **Website:** [safeshamba.com](https://safeshamba.com)
+- **GitHub:** [llakterian/multisig](https://github.com/llakterian/multisig)
+
 ---
 
-**© 2026 Escrow Secure Land Purchase Platform**
-*Powered by Ethereum Smart Contracts & Notary Verification*
+**© 2026 SafeShamba**
+*Secure land purchase with multisig custody & notary verification*
