@@ -31,6 +31,11 @@ Create a `.env` file in the project root:
 # Your private key (testnet only!)
 PRIVATE_KEY=0xYourPrivateKeyHere
 
+# Role-based keys for multi-signature workflow (fall back to PRIVATE_KEY if unset)
+NOTARY_PRIVATE_KEY=0xNotaryPrivateKeyHere
+TREASURY_PRIVATE_KEY=0xTreasuryPrivateKeyHere
+SELLER_PRIVATE_KEY=0xSellerPrivateKeyHere
+
 # RPC endpoints
 SEPOLIA_RPC=https://sepolia.infura.io/v3/YourInfuraKey
 GOERLI_RPC=https://goerli.infura.io/v3/YourInfuraKey
