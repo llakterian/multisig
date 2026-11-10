@@ -66,12 +66,10 @@ async function main() {
   // Executing full workflow
   console.log("\nStep 5: Executing full end-to-end workflow...");
   const testEscrow = await ethers.getContractAt("NotaryMediatedEscrow", testEscrowAddress);
-  const treasurySigner = await ethers.getSigner(sizlandTreasury);
-  const notarySigner = await ethers.getSigner(doddyNotary);
 
   // 5.1: Intake
   console.log("  5.1: Creating intake (Phase 1)...");
-  await (await testEscrow.connect(deployer).createIntake(
+  await (await testEscrow.createIntake(
     testAmount,
     1,
     "Farming",
@@ -81,8 +79,8 @@ async function main() {
 
   // 5.2: Discovery
   console.log("  5.2: Uploading gallery & Selecting plot (Phase 2)...");
-  await (await testEscrow.connect(treasurySigner).uploadDigitalGallery(0)).wait();
-  await (await testEscrow.connect(deployer).selectPlot(0)).wait();
+  await (await testEscrow.uploadDigitalGallery(0)).wait();
+  await (await testEscrow.selectPlot(0)).wait();
 
   // 5.3: Funding
   console.log("  5.3: Funding escrow (Phase 3)...");
@@ -93,16 +91,16 @@ async function main() {
   const reportHash = ethers.utils.id("DD Report");
   const searchHash = ethers.utils.id("Search Certificate");
 
-  await (await testEscrow.connect(notarySigner).uploadDocument(0, 1, reportHash)).wait(); // 1 is DueDiligenceReport
-  await (await testEscrow.connect(notarySigner).uploadDocument(0, 0, searchHash)).wait(); // 0 is SearchCertificate
+  await (await testEscrow.uploadDocument(0, 1, reportHash)).wait(); // 1 is DueDiligenceReport
+  await (await testEscrow.uploadDocument(0, 0, searchHash)).wait(); // 0 is SearchCertificate
 
   console.log("    Verifying documents as client...");
-  await (await testEscrow.connect(deployer).verifyDocument(0, 1)).wait(); // 1 is DueDiligenceReport
-  await (await testEscrow.connect(deployer).verifyDocument(0, 0)).wait(); // 0 is SearchCertificate -> Should complete DD
+  await (await testEscrow.verifyDocument(0, 1)).wait(); // 1 is DueDiligenceReport
+  await (await testEscrow.verifyDocument(0, 0)).wait(); // 0 is SearchCertificate -> Should complete DD
 
   // 5.5: Negotiation
   console.log("  5.5: Notary setting negotiated rates (Custom Percentages)...");
-  await (await testEscrow.connect(notarySigner).setNegotiatedRates(0, 1500, 300)).wait();
+  await (await testEscrow.setNegotiatedRates(0, 1500, 300)).wait();
 
   // Get status
   const escrowDetails = await testEscrow.escrows(0);
