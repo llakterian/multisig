@@ -184,6 +184,14 @@ export default function App() {
           {ctx && role==='Observer' ? <div className="card"><div className="bd note">Connected as observer. Role-based actions appear for the client, notary/treasury, or multisig owners of this escrow.</div></div> : null}
         </main>
       </div>
+<footer style={{textAlign:'center',padding:'20px 16px',color:'var(--muted)',fontFamily:'ui-sans-serif,system-ui,sans-serif',fontSize:'0.8rem',lineHeight:1.6, borderTop:'1px solid var(--line)',marginTop:24}}>
+        <div>Secure land purchase with multisig custody & notary verification</div>
+        <div style={{marginTop:4}}>
+          <a href="https://las.longspear.co.ke" target="_blank" rel="noopener noreferrer" style={{color:'var(--accent)',textDecoration:'none'}}>Longspear</a> ·{' '}
+          <a href="mailto:cheru.sambu@longspear.co.ke" style={{color:'var(--accent)',textDecoration:'none'}}>cheru</a> ·{' '}
+          <a href="https://github.com/llakterian/multisig" target="_blank" rel="noopener noreferrer" style={{color:'var(--accent)',textDecoration:'none'}}>Source</a>
+        </div>
+      </footer>
     </div>
   )
 }
