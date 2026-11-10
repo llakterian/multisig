@@ -7,128 +7,142 @@
 \usepackage{xcolor}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{booktabs}
 
-\definecolor{sambagreen}{HTML}{1f4d45}
-\definecolor{sambagold}{HTML}{8a6a2b}
+\definecolor{sambagreen}{HTML}{1F4D45}
+\definecolor{sambagold}{HTML}{8A6A2B}
+\definecolor{sambablue}{HTML}{2563EB}
+\definecolor{sambagray}{HTML}{6B7280}
 
-\titleformat{\section}{\Large\bfseries\color{sambagreen}}{Section \thesection}{1em}{}
+\titleformat{\section}{\Large\bfseries\color{sambagreen}}{\thesection}{1em}{}
 \titleformat{\subsection}{\large\bfseries\color{sambagold}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{sambablue}}{\thesubsubsection}{1em}{}
 
 \pagestyle{fancy}
 \fancyhf{}
 \fancyfoot[C]{\thepage}
-\fancyfoot[L]{\small SafeShamba --- Cheru (llakterian) --- \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}}
+\fancyfoot[L]{\small SafeShamba \textbar{} Cheru (llakterian) \textbar{} \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}}
 \fancyhead[R]{\small \href{https://las.longspear.co.ke}{Longspear}}
 
 \setlength{\headheight}{14pt}
+\hypersetup{colorlinks=true,linkcolor=sambagreen,urlcolor=sambablue}
 
 \begin{document}
 
 \begin{titlepage}
 \centering
-\vspace*{2cm}
+\vspace*{3cm}
 {\Huge\bfseries\color{sambagreen} SafeShamba\par}
 \vspace{0.5cm}
-{\Large Secure Land Purchase with Multisig Custody\par}
-\vspace{2cm}
-{\large User Manual\par}
+{\Large\color{sambagray} Secure Land Purchase with Multisig Custody\par}
 \vspace{3cm}
+{\LARGE User Manual\par}
+\vspace{4cm}
 {\large Prepared by:\par}
 \vspace{0.3cm}
 {\large\bfseries Cheru Sambu (llakterian)\par}
 {\large \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}\par}
 {\large \href{https://las.longspear.co.ke}{las.longspear.co.ke}\par}
 \vspace{2cm}
-{\large Version 1.0 --- November 2026\par}
+{\large Version 1.0 \textbar{} November 2026\par}
 \end{titlepage}
 
 \newpage
 \tableofcontents
 \newpage
 
-\section{What is SafeShamba?}
-SafeShamba is a secure land purchase platform that uses blockchain technology and multisig custody to protect your transactions. Think of it as a digital escrow service where funds are held securely until all conditions are met.
+\section{Introduction}
+SafeShamba is a secure land purchase platform that uses blockchain technology and multisig custody to protect your transactions. It functions as a digital escrow service where funds are held securely until all conditions are met.
 
 \section{How It Works}
-SafeShamba uses a 4-phase workflow:
+SafeShamba operates through a four phase workflow:
+
 \begin{enumerate}
-\item \textbf{Intake \& Discovery} --- You submit your land requirements
-\item \textbf{Safety Gate} --- Due diligence and document verification
-\item \textbf{Execution \& Fiat Bridge} --- Funds are released through secure channels
-\item \textbf{Transfer Registry} --- Title transfer and completion
+\item \textbf{Intake and Discovery} -- You submit your land requirements
+\item \textbf{Safety Gate} -- Due diligence and document verification
+\item \textbf{Execution and Fiat Bridge} -- Funds are released through secure channels
+\item \textbf{Transfer Registry} -- Title transfer and completion
 \end{enumerate}
 
 \section{Getting Started}
 \subsection{Prerequisites}
 \begin{itemize}
-\item A Web3 wallet (MetaMask, WalletConnect, etc.)
-\item Testnet ETH (Sepolia)
-\item A web browser
+\item A Web3 wallet such as MetaMask or WalletConnect
+\item Testnet ETH on Sepolia
+\item A modern web browser
 \end{itemize}
 
 \subsection{Step 1: Connect Your Wallet}
-Open SafeShamba in your browser and click ``Connect wallet'' in the top right. Approve the connection in your wallet. Your address will appear in the pill badge.
+Open SafeShamba in your browser. Click the Connect wallet button in the top right corner. Approve the connection in your wallet. Your address will appear in the status badge.
 
 \subsection{Step 2: Set Up the Factory}
-If deploying fresh, get testnet ETH from \href{https://faucet.sepolia.dev}{faucet.sepolia.dev} and run:
+If you are deploying fresh, obtain testnet ETH from the Sepolia faucet and run the deployment script:
 \begin{verbatim}
 npx hardhat run scripts/deploy.js --network sepolia
 \end{verbatim}
-Copy the EscrowFactory address and paste it in the Factory field.
+Copy the EscrowFactory address and paste it into the Factory field on the left side of the application.
 
 \subsection{Step 3: Load an Escrow}
-Paste the escrow contract address and click ``Load escrow''. The system will show the current state and your role.
+Paste the escrow contract address into the Escrow field. Click the Load escrow button. The system will display the current state and your role within the transaction.
 
 \section{Using SafeShamba}
-\subsection{As a Client}
+\subsection{Client Actions}
+If you are purchasing land, you can perform the following actions:
+
 \begin{itemize}
-\item \textbf{Select plot} --- Choose the land plot during discovery
-\item \textbf{Fund escrow} --- Deposit ETH into multisig custody
-\item \textbf{Verify document} --- Confirm due diligence documents
-\item \textbf{Proceed with purchase} --- Move to execution phase
-\item \textbf{Cancel} --- Cancel before execution (refund available)
+\item Select plot -- Choose the land plot during the discovery phase
+\item Fund escrow -- Deposit ETH into multisig custody
+\item Verify document -- Confirm due diligence documents
+\item Proceed with purchase -- Move to the execution phase
+\item Cancel -- Cancel before execution to enable a refund
 \end{itemize}
 
-\subsection{As a Notary}
+\subsection{Notary Actions}
+If you are acting as the legal notary, you can perform the following actions:
+
 \begin{itemize}
-\item \textbf{Upload document} --- Submit document hashes
-\item \textbf{Set rates} --- Configure deposit and facilitation fees
-\item \textbf{Execute fiat bridge} --- Process currency conversion
-\item \textbf{Upload lodgement receipt} --- Submit registry documents
-\item \textbf{Complete transfer} --- Finalize the transaction
+\item Upload document -- Submit document hashes to the blockchain
+\item Set rates -- Configure deposit and facilitation fee percentages
+\item Execute fiat bridge -- Process currency conversion
+\item Upload lodgement receipt -- Submit registry documents
+\item Complete transfer -- Finalize the transaction
 \end{itemize}
 
-\subsection{As a Multisig Owner}
+\subsection{Multisig Owner Actions}
+If you are part of the multisig group, you can perform the following actions:
+
 \begin{itemize}
-\item \textbf{Submit authorized release} --- Approve fund releases
-\item \textbf{Purpose selection} --- Choose DD fee, facilitation, or refund
+\item Submit authorized release -- Approve fund releases
+\item Purpose selection -- Choose between DD fee, facilitation, or refund
 \end{itemize}
 
 \section{Release Authorization}
-SafeShamba uses state-gated releases --- funds can only be released when the workflow allows it:
+SafeShamba uses state gated releases. Funds can only be released when the workflow permits it:
+
 \begin{itemize}
-\item \textbf{DD Fee} --- After funding, to Treasury
-\item \textbf{Facilitation Fee} --- After completion, to Treasury
-\item \textbf{Refund} --- After cancellation, to Client
-\item \textbf{Seller Proceeds} --- After completion, to Seller
+\item DD Fee -- Released after funding, paid to Treasury
+\item Facilitation Fee -- Released after completion, paid to Treasury
+\item Refund -- Released after cancellation, paid to Client
+\item Seller Proceeds -- Released after completion, paid to Seller
 \end{itemize}
 
 \section{Pricing}
-Attractive pricing designed for clients:
+Our pricing is designed to be accessible and fair:
+
 \begin{itemize}
-\item \textbf{Free} --- Create and manage escrows at no cost
-\item \textbf{0.5\% facilitation fee} --- Only on completed transactions
-\item \textbf{No monthly fees} --- Pay only when you transact
-\item \textbf{Volume discounts} --- Increasing savings as you grow
-\item \textbf{Revenue share} --- 20\% of facilitation fees for distributors
+\item Free tier -- Create and manage escrows at no cost
+\item 0.5 percent facilitation fee -- Only applied on completed transactions
+\item No monthly fees -- Pay only when you transact
+\item Volume discounts -- Increasing savings as your transaction volume grows
+\item Revenue share -- 20 percent of facilitation fees for distribution partners
 \end{itemize}
 
-\section{Security Notes}
+\section{Security}
 \begin{itemize}
-\item Never share your private key
+\item Never share your private key with anyone
 \item Always verify contract addresses before interacting
 \item Use hardware wallets for large transactions
-\item Test on Sepolia before mainnet deployment
+\item Test on Sepolia before deploying to mainnet
 \item Report vulnerabilities to \href{mailto:security@safeshamba.com}{security@safeshamba.com}
 \end{itemize}
 

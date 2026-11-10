@@ -1,17 +1,16 @@
 \documentclass{standalone}
 \usepackage{tikz}
-\usetikzlibrary{shapes,arrows,positioning,fit, shadows}
+\usetikzlibrary{shapes,arrows,positioning,fit,shadows}
 
-\definecolor{sambagreen}{HTML}{1f4d45}
-\definecolor{sambagold}{HTML}{8a6a2b}
-\definecolor{sambablue}{HTML}{50B1FD}
-\definecolor{sambagray}{HTML}{d8d1c7}
+\definecolor{sambagreen}{HTML}{1F4D45}
+\definecolor{sambagold}{HTML}{8A6A2B}
+\definecolor{sambablue}{HTML}{2563EB}
+\definecolor{sambagray}{HTML}{6B7280}
 
 \tikzset{
   actor/.style={rectangle, rounded corners, draw=sambagreen, fill=sambagreen!10, minimum width=2.5cm, minimum height=0.8cm, font=\small\bfseries, drop shadow},
   contract/.style={rectangle, rounded corners, draw=sambablue, fill=sambablue!10, minimum width=3cm, minimum height=0.7cm, font=\small, drop shadow},
   phase/.style={rectangle, rounded corners, draw=sambagold, fill=sambagold!10, minimum width=2.5cm, minimum height=0.6cm, font=\small, drop shadow},
-  data/.style={ellipse, draw=sambagreen, fill=sambagreen!5, minimum width=2cm, minimum height=0.6cm, font=\small},
   arrow/.style={->, >=stealth, thick, draw=sambagreen},
   dashedarrow/.style={->, >=stealth, thick, dashed, draw=sambagold}
 }
@@ -20,35 +19,29 @@
 
 \begin{tikzpicture}[node distance=1.5cm and 2cm]
 
-% Title
 \node[anchor=north west] at (0,0) {\Large\bfseries SafeShamba Data Flow Diagram};
-\node[anchor=north west] at (0,-0.4) {\small Version 1.0 --- November 2026};
+\node[anchor=north west] at (0,-0.4) {\small Version 1.0 -- November 2026};
 
-% Actors
 \node[actor] (client) at (0,-2) {Client};
 \node[actor] (seller) at (3,-2) {Seller};
 \node[actor] (notary) at (6,-2) {Notary};
 \node[actor] (treasury) at (9,-2) {Treasury};
 
-% Factory
 \node[contract] (factory) at (4.5,-4) {EscrowFactory};
 \node[phase] (factory-phase) at (4.5,-5.2) {Phase: Create Escrow};
 
-% Escrow
 \node[contract] (escrow) at (4.5,-7) {NotaryMediatedEscrow};
-\node[phase] (escrow-phase) at (4.5,-8.2) {Phase: Intake \& Discovery};
+\node[phase] (escrow-phase) at (4.5,-8.2) {Phase: Intake and Discovery};
 
-% Multisig
 \node[contract] (multisig) at (4.5,-10) {MultiSigWallet};
 \node[phase] (multisig-phase) at (4.5,-11.2) {Phase: Safety Gate};
 
-% Data flows
 \draw[arrow] (client) -- (factory) node[midway, left, font=\tiny] {createEscrow()};
 \draw[arrow] (seller) -- (factory) node[midway, right, font=\tiny] {seller address};
 \draw[arrow] (notary) -- (factory) node[midway, right, font=\tiny] {notary address};
 \draw[arrow] (treasury) -- (factory) node[midway, right, font=\tiny] {treasury address};
 
-\draw[arrow] (factory) -- (escrow) node[midway, left, font=\tiny] {deploy + initialize};
+\draw[arrow] (factory) -- (escrow) node[midway, left, font=\tiny] {deploy and initialize};
 \draw[arrow] (client) -- (escrow) node[midway, left, font=\tiny] {fundEscrow()};
 \draw[arrow] (notary) -- (escrow) node[midway, right, font=\tiny] {uploadDocument()};
 \draw[arrow] (client) -- (escrow) node[midway, left, font=\tiny] {verifyDocument()};
@@ -58,7 +51,6 @@
 \draw[dashedarrow] (multisig) -- (seller) node[midway, left, font=\tiny] {Seller proceeds};
 \draw[dashedarrow] (multisig) -- (client) node[midway, left, font=\tiny] {Refund};
 
-% Legend
 \node[anchor=north west] at (11,-2) {\textbf{Legend:}};
 \node[anchor=north west] at (11,-2.8) {\tikz\draw[arrow] (0,0) -- (1,0); \ Active flow};
 \node[anchor=north west] at (11,-3.6) {\tikz\draw[dashedarrow] (0,0) -- (1,0); \ Release flow};

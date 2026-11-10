@@ -7,39 +7,43 @@
 \usepackage{xcolor}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{booktabs}
 
-\definecolor{sambagreen}{HTML}{1f4d45}
-\definecolor{sambagold}{HTML}{8a6a2b}
+\definecolor{sambagreen}{HTML}{1F4D45}
+\definecolor{sambagold}{HTML}{8A6A2B}
+\definecolor{sambablue}{HTML}{2563EB}
+\definecolor{sambagray}{HTML}{6B7280}
 
-\titleformat{\section}{\Large\bfseries\color{sambagreen}}{Section \thesection}{1em}{}
+\titleformat{\section}{\Large\bfseries\color{sambagreen}}{\thesection}{1em}{}
 \titleformat{\subsection}{\large\bfseries\color{sambagold}}{\thesubsection}{1em}{}
 
 \pagestyle{fancy}
 \fancyhf{}
 \fancyfoot[C]{\thepage}
-\fancyfoot[L]{\small SafeShamba --- Cheru (llakterian) --- \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}}
+\fancyfoot[L]{\small SafeShamba \textbar{} Cheru (llakterian) \textbar{} \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}}
 \fancyhead[R]{\small \href{https://las.longspear.co.ke}{Longspear}}
 
 \setlength{\headheight}{14pt}
+\hypersetup{colorlinks=true,linkcolor=sambagreen,urlcolor=sambablue}
 
 \begin{document}
 
 \begin{titlepage}
 \centering
-\vspace*{2cm}
+\vspace*{3cm}
 {\Huge\bfseries\color{sambagreen} SafeShamba\par}
 \vspace{0.5cm}
-{\Large Secure Land Purchase with Multisig Custody\par}
-\vspace{2cm}
-{\large Distributor Guide\par}
+{\Large\color{sambagray} Secure Land Purchase with Multisig Custody\par}
 \vspace{3cm}
+{\LARGE Distributor Guide\par}
+\vspace{4cm}
 {\large Prepared by:\par}
 \vspace{0.3cm}
 {\large\bfseries Cheru Sambu (llakterian)\par}
 {\large \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}\par}
 {\large \href{https://las.longspear.co.ke}{las.longspear.co.ke}\par}
 \vspace{2cm}
-{\large Version 1.0 --- November 2026\par}
+{\large Version 1.0 \textbar{} November 2026\par}
 \end{titlepage}
 
 \newpage
@@ -49,47 +53,66 @@
 \section{Overview}
 This guide explains how to distribute SafeShamba to your clients.
 
-\section{What You're Distributing}
+\section{What You Are Distributing}
 \begin{itemize}
-\item \textbf{Smart Contracts} --- Audited Solidity contracts (EscrowFactory, NotaryMediatedEscrow, MultiSigWallet)
-\item \textbf{Frontend} --- React application with SafeShamba branding
-\item \textbf{Documentation} --- User manual, deployment guide, security audit
-\item \textbf{License} --- MIT + Commercial Agreement
+\item Smart Contracts -- Audited Solidity contracts including EscrowFactory, NotaryMediatedEscrow, and MultiSigWallet
+\item Frontend -- React application with SafeShamba branding
+\item Documentation -- User manual, deployment guide, and security audit
+\item License -- MIT license with a commercial agreement
 \end{itemize}
 
 \section{Distribution Methods}
-\subsection{Method 1: Deploy and Share (Recommended)}
-You deploy the contracts once, then share the frontend URL with clients.
+\subsection{Method 1: Deploy and Share}
+You deploy the contracts once, then share the frontend URL with clients. This is the simplest approach and works well for early stage distribution.
 
-\subsection{Method 2: White-Label Deployment}
-Each client gets their own deployment with custom branding.
+\subsection{Method 2: White Label Deployment}
+Each client receives their own deployment with custom branding. This is ideal for enterprise clients who want a fully branded experience.
 
 \subsection{Method 3: SaaS Platform}
-Host everything yourself and charge a subscription.
+Host everything yourself on your own infrastructure. Charge a recurring subscription fee for ongoing access and support.
 
 \section{Pricing Models}
-Attractive pricing designed for clients:
+Our pricing is designed to be attractive to clients while maintaining healthy margins for distributors:
+
 \begin{itemize}
-\item \textbf{Free tier} --- Create and manage escrows at no cost
-\item \textbf{0.5\% facilitation fee} --- Only on completed transactions
-\item \textbf{No monthly fees} --- Pay only when you transact
-\item \textbf{Volume discounts} --- Increasing savings as you grow
-\item \textbf{Revenue share} --- 20\% of facilitation fees for distributors
+\item Free tier -- Create and manage escrows at no cost
+\item 0.5 percent facilitation fee -- Only applied on completed transactions
+\item No monthly fees -- Pay only when you transact
+\item Volume discounts -- Increasing savings as transaction volume grows
+\item Revenue share -- 20 percent of facilitation fees for distribution partners
 \end{itemize}
 
 \section{Support Packages}
 \begin{itemize}
-\item \textbf{Basic} --- \$49/month --- Documentation, email support, bug fixes
-\item \textbf{Pro} --- \$149/month --- Everything in Basic, priority support, custom branding
-\item \textbf{Enterprise} --- \$499/month --- Everything in Pro, dedicated manager, SLA
+\item Basic -- \$49 per month -- Documentation access, email support, and bug fixes
+\item Pro -- \$149 per month -- Everything in Basic, priority support, and custom branding
+\item Enterprise -- \$499 per month -- Everything in Pro, dedicated account manager, and SLA guarantee
+\end{itemize}
+
+\section{Marketing Points}
+\begin{itemize}
+\item Multisig Security -- Funds protected by multiple signature requirements
+\item Notary Verification -- Legal oversight of all transactions
+\item State Gated Releases -- Funds only released when conditions are met
+\item Audited Contracts -- Security reviewed by independent experts
+\item Testnet Ready -- Try before you commit
+\end{itemize}
+
+\section{Target Audience}
+\begin{itemize}
+\item Land buyers and sellers
+\item Real estate agents and brokers
+\item Property developers
+\item Legal professionals
+\item Financial institutions
 \end{itemize}
 
 \section{Contact}
 \begin{itemize}
-\item \textbf{Developer:} \href{mailto:llakterian@gmail.com}{llakterian@gmail.com}
-\item \textbf{Distributor:} \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}
-\item \textbf{Website:} \href{https://las.longspear.co.ke}{las.longspear.co.ke}
-\item \textbf{Support:} \href{mailto:support@safeshamba.com}{support@safeshamba.com}
+\item Developer -- \href{mailto:llakterian@gmail.com}{llakterian@gmail.com}
+\item Distributor -- \href{mailto:cheru.sambu@longspear.co.ke}{cheru.sambu@longspear.co.ke}
+\item Website -- \href{https://las.longspear.co.ke}{las.longspear.co.ke}
+\item Support -- \href{mailto:support@safeshamba.com}{support@safeshamba.com}
 \end{itemize}
 
 \end{document}
