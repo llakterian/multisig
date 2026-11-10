@@ -98,7 +98,7 @@ export default function App() {
 
       <div className="grid">
         <aside className="stack">
-          <div className="card"><div className="hd">Matter files</div><div className="bd"><div className="folder-row"><Folder color="dossier" size="md" label={ctx?`Escrow · ${PHASES[ctx.state]||ctx.state}`:'Active escrow'} /></div><p className="note" style={{margin:'8px 0 0'}}>Four stages: intake & discovery, safety gate (due diligence), execution & fiat bridge, transfer registry. Funds move to multisig custody; releases are state-gated and require multisig owner confirmation.</p></div></div>
+          <div className="card"><div className="hd">Matter files</div><div className="bd"><div className="folder-container"><Folder color="dossier" size="md" label={ctx?`Escrow · ${PHASES[ctx.state]||ctx.state}`:'Active escrow'} /></div><p className="note" style={{margin:'12px 0 0', lineHeight:1.5}}>Four stages: intake & discovery, safety gate (due diligence), execution & fiat bridge, transfer registry. Funds move to multisig custody; releases are state-gated and require multisig owner confirmation.</p></div></div>
           <div className="card"><div className="hd">Connection</div><div className="bd stack">
             <label>Factory<input className="mono" value={factoryAddr} onChange={e=>setFactoryAddr(e.target.value)} placeholder="0x… (VITE_FACTORY_ADDRESS)"/></label>
             <label>Escrow<input className="mono" value={escrowAddr} onChange={e=>setEscrowAddr(e.target.value)} placeholder="0x… (VITE_ESCROW_ADDRESS)"/></label>
@@ -106,13 +106,12 @@ export default function App() {
             {err?<div className="err">{err}</div>:null}
           </div></div>
           {ctx ? <div className="card"><div className="hd">Record</div><div className="bd stack note">
-            <div><strong>State:</strong> {PHASES[ctx.state]}</div>
-            <div><strong>Your role:</strong> {role}</div>
-            <div className="mono"><strong>Client</strong> {ctx.client}</div>
-            <div className="mono"><strong>Seller</strong> {ctx.seller}</div>
-            <div className="mono"><strong>Notary</strong> {ctx.notary}</div>
-            <div className="mono"><strong>Treasury</strong> {ctx.treasury}</div>
-            <div className="mono"><strong>Multisig</strong> {ctx.multisig}</div>
+            <div className="grid-2"><div><strong>State:</strong> {PHASES[ctx.state]}</div><div><strong>Role:</strong> {role}</div></div>
+            <div className="addr-line"><strong>Client</strong> {ctx.client}</div>
+            <div className="addr-line"><strong>Seller</strong> {ctx.seller}</div>
+            <div className="addr-line"><strong>Notary</strong> {ctx.notary}</div>
+            <div className="addr-line"><strong>Treasury</strong> {ctx.treasury}</div>
+            <div className="addr-line"><strong>Multisig</strong> {ctx.multisig}</div>
             <div>Deposited {fmt(ctx.amounts[4])} ETH · Released {fmt(ctx.amounts[5])} ETH · Multisig balance {fmt(ctx.balance)} ETH</div>
             <div>DD {fmt(ctx.amounts[0])} · Facilitation {fmt(ctx.amounts[3])} · Deposit {fmt(ctx.amounts[1])} · Final {fmt(ctx.amounts[2])}</div>
           </div></div> : null}
@@ -120,7 +119,7 @@ export default function App() {
 
         <main className="stack">
           <div className="card"><div className="hd">Create escrow (factory)</div><div className="bd stack note">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div className="grid-2">
               <label>Client<input className="mono" value={cform.client} onChange={e=>setCform({...cform,client:e.target.value})}/></label>
               <label>Seller<input className="mono" value={cform.seller} onChange={e=>setCform({...cform,seller:e.target.value})}/></label>
               <label>Notary<input className="mono" value={cform.notary} onChange={e=>setCform({...cform,notary:e.target.value})}/></label>
@@ -145,13 +144,13 @@ export default function App() {
               <label>Hash (bytes32)<input className="mono" value={doc.hash} onChange={e=>setDoc({...doc,hash:e.target.value})} placeholder="0x…"/></label>
             </Tx>
             <Tx title="Notary — Set negotiated rates" busy={busy} onRun={()=>runEscrow(c=>c.setNegotiatedRates(0, Number(rates.deposit), Number(rates.fee)))}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div className="grid-2">
                 <label>Deposit (bp)<input value={rates.deposit} onChange={e=>setRates({...rates,deposit:e.target.value})}/></label>
                 <label>Facilitation fee (bp, ≤500)<input value={rates.fee} onChange={e=>setRates({...rates,fee:e.target.value})}/></label>
               </div>
             </Tx>
             <Tx title="Notary — Execute fiat bridge" busy={busy} onRun={()=>runEscrow(c=>c.executeFiatBridge(0, ethers.BigNumber.from(fiat.kes||'0'), ethers.BigNumber.from(fiat.rate||'0')))}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}><label>KES amount<input value={fiat.kes} onChange={e=>setFiat({...fiat,kes:e.target.value})}/></label><label>Exchange rate<input value={fiat.rate} onChange={e=>setFiat({...fiat,rate:e.target.value})}/></label></div>
+              <div className="grid-2"><label>KES amount<input value={fiat.kes} onChange={e=>setFiat({...fiat,kes:e.target.value})}/></label><label>Exchange rate<input value={fiat.rate} onChange={e=>setFiat({...fiat,rate:e.target.value})}/></label></div>
             </Tx>
             <Tx title="Notary — Upload lodgement receipt" busy={busy} onRun={()=>runEscrow(c=>c.uploadLodgementReceipt(0, doc.hash||ethers.constants.HashZero, Math.floor(Date.now()/1000)+30*86400))}/>
             <Tx title="Notary — Complete transfer" busy={busy} onRun={()=>runEscrow(c=>c.completeTransfer(0, doc.hash||ethers.constants.HashZero, 'TRACKING'))}/>

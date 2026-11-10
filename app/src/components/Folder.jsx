@@ -44,9 +44,17 @@ export default function Folder({ color="dossier", size="md", label, className, .
   const [isHovered, setIsHovered] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div data-slot="folder" className={cn("relative w-full h-full flex flex-col items-center justify-center", className)} {...props}>
-      <div className="relative cursor-pointer select-none" style={{ width: BASE_WIDTH*scale, height: BASE_HEIGHT*scale, touchAction:"manipulation", WebkitTapHighlightColor:"transparent" }}
-        onMouseEnter={()=>setIsHovered(true)} onMouseLeave={()=>{setIsHovered(false); setIsOpen(false)}} onClick={()=>setIsOpen(o=>!o)}>
+    <div data-slot="folder" className={cn("relative w-full max-w-full flex flex-col items-center justify-center overflow-hidden", className)} {...props}>
+      <div className="relative cursor-pointer select-none" style={{ 
+        width: `min(${BASE_WIDTH * scale}px, 90vw)`, 
+        height: `min(${BASE_HEIGHT * scale}px, 70vh)`, 
+        touchAction:"manipulation", 
+        WebkitTapHighlightColor:"transparent",
+        aspectRatio: `${BASE_WIDTH}/${BASE_HEIGHT}`
+      }}
+        onMouseEnter={()=>setIsHovered(true)} 
+        onMouseLeave={()=>{setIsHovered(false); setIsOpen(false)}} 
+        onClick={()=>setIsOpen(o=>!o)}>
         <div className="absolute top-1/2 left-1/2" style={{ width:BASE_WIDTH, height:BASE_HEIGHT, transform:`translate(-50%, -50%) scale(${scale})`, perspective:800*scale }}>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"><div style={{ width:BASE_WIDTH, height:BASE_HEIGHT, borderRadius:25, backgroundColor:theme.backFill, boxShadow:theme.backInsetShadow }}/></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -60,7 +68,7 @@ export default function Folder({ color="dossier", size="md", label, className, .
           </motion.div>
         </div>
       </div>
-      {label && <div style={{marginTop:8, fontFamily:'ui-sans-serif,system-ui,sans-serif', fontSize:13, color:'#5f5a54'}}>{label}</div>}
+      {label && <div style={{marginTop:8, fontFamily:'ui-sans-serif,system-ui,sans-serif', fontSize:13, color:'#5f5a54', textAlign:'center', maxWidth:'100%', wordBreak:'keep-all'}}>{label}</div>}
     </div>
   );
 }
