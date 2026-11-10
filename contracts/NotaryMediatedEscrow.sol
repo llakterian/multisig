@@ -130,10 +130,15 @@ contract NotaryMediatedEscrow is ReentrancyGuard, IReleaseAuthorizer {
             escrows[id].state = EscrowState.DueDiligenceComplete; emit MilestoneCompleted(id, "DueDiligence");
         }
     }
-    function setNegotiatedRates(uint256 id, uint256 depositBP, uint256 facilitationBP) external onlyNotary(id) validEscrow(id) {
-        require(escrows[id].state >= EscrowState.DueDiligenceComplete, "DD not complete");
+    function setNegotiatedRates(uint256 id, uint256 depositBP, uint256 facilitationBP) external onlyNotary(id) validEscrow(id) inState(id, EscrowState.DueDiligenceComplete) {
         require(depositBP <= BASIS_POINTS_MAX && facilitationBP <= MAX_FACILITATION_FEE_BP, "Invalid rate");
-        escrows[id].depositBasisPoints = depositBP; escrows[id].facilitationFeeBasisPoints = facilitationBP; _recalc(id);
+        EscrowTransaction storage e = escrows[id];
+        // ensure rates leave non-negative final amount
+        uint256 available = e.budget > e.dueDiligenceFee ? e.budget - e.dueDiligenceFee : 0;
+        uint256 fac = (e.budget * facilitationBP) / BASIS_POINTS_MAX;
+        uint256 dep = (available * depositBP) / BASIS_POINTS_MAX;
+        require(fac + dep <= available, "Rates exceed available");
+        e.depositBasisPoints = depositBP; e.facilitationFeeBasisPoints = facilitationBP; _recalc(id);
         emit RatesSet(id, depositBP, facilitationBP);
     }
     function proceedWithPurchase(uint256 id) external onlyClient(id) validEscrow(id) inState(id, EscrowState.DueDiligenceComplete) { escrows[id].state = EscrowState.ExecutionPending; }
@@ -170,14 +175,15 @@ contract NotaryMediatedEscrow is ReentrancyGuard, IReleaseAuthorizer {
             return e.state == EscrowState.Completed && to == treasury && amount == e.facilitationFee && amount > 0;
         }
         if (purpose == P_SELLER_PROCEEDS) {
-            // seller proceeds releasable after completion; amount must not exceed remaining deposited balance
-            uint256 remaining = e.depositedAmount - e.releasedAmount - (releaseConsumed[id][P_FACILITATION] ? 0 : e.facilitationFee) - (releaseConsumed[id][P_DD_FEE] ? 0 : e.dueDiligenceFee);
-            // more conservatively, allow exact remaining claim; UI computes
-            return e.state == EscrowState.Completed && to == e.seller && amount > 0 && amount <= e.depositedAmount;
+            if (e.state != EscrowState.Completed || to != e.seller) return false;
+            uint256 reserved = e.dueDiligenceFee + e.facilitationFee; // DD+facilitation reserved to treasury purposes
+            if (e.depositedAmount <= reserved) return false;
+            return amount == e.depositedAmount - reserved; // exact remainder; cannot overclaim reserved fees
         }
         if (purpose == P_REFUND) {
+            // only full remaining refundable balance in cancelled pre-execution state (see cancelEscrow)
             uint256 refundable = e.depositedAmount - e.releasedAmount;
-            return e.state == EscrowState.Cancelled && to == e.client && amount > 0 && amount <= refundable;
+            return e.state == EscrowState.Cancelled && to == e.client && amount > 0 && amount == refundable;
         }
         return false;
     }

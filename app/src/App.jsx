@@ -54,7 +54,7 @@ export default function App() {
       isClient: w.account && addr(w.account)===addr(details.client),
       isSeller: w.account && addr(w.account)===addr(details.seller),
       isNotary: w.account && addr(w.account)===addr(details.notary),
-      isTreasury: w.account && addr(w.account)===addr(treasas),
+      isTreasury: w.account && addr(w.account)===addr(treas),
       isMsOwner, owners, txCount
     })
   }
@@ -89,7 +89,7 @@ export default function App() {
   return (
     <div className="shell">
       <header className="top">
-        <div className="brand"><h1>Escrow Dossier</h1><p>Notary-mediated land purchase with multisig custody. Personal console.</p></div>
+        <div className="brand"><h1>SafeShamba</h1><p>Secure land purchase with multisig custody. Personal console.</p></div>
         <div className="conn">
           {w.account ? <span className="pill mono">{w.account.slice(0,6)}…{w.account.slice(-4)}</span> : null}
           <button className="btn" onClick={()=>w.connect().catch(e=>setErr(e.message))}>{w.account?'Connected':'Connect wallet'}</button>

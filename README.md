@@ -1,4 +1,4 @@
-### The Land Acquisition Workflow
+### SafeShamba
 
 A proprietary P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
 
@@ -9,12 +9,12 @@ A proprietary P2P/Escrow interface that bridges blockchain logic with real-world
 1. **MultiSigWallet.sol** - Base multi-signature wallet implementation
 2. **NotaryMediatedEscrow.sol** - Main escrow contract with milestone-based releases
 3. **EscrowFactory.sol** - Factory for modular escrow deployment
-4. **Frontend Interface** - React-based 4-phase workflow UI
+4. **Frontend Interface** - React-based 4-phase workflow UI (SafeShamba)
 5. **Document Hashing System** - IPFS + on-chain verification
 
 ### Key Features
 
-- **Multi-Sig Security**: Requires multiple confirmations for fund releases
+- **SafeShamba**: Secure land purchase with multisig custody
 - **Notary Oracle**: Legal Notary verifies legal milestones before fund releases
 - **Document Hashing**: All legal documents hashed on-chain for verification
 - **4-Phase Workflow**: Discovery → Safety Gate → Execution → Final Settlement
