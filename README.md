@@ -1,6 +1,22 @@
 ### SafeShamba
 
-A proprietary P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
+A P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
+
+## Deployment — Verified, Live (Sepolia)
+
+All contracts are **deployed and verified** on Sepolia testnet (chain 11155111), and the frontend is configured to talk to them. Click to inspect on Etherscan:
+
+| Contract | Address (verified) |
+|----------|--------------------|
+| **EscrowFactory** | [`0xCc3053474A6FBEA77c3DDcADFA0b987498455aa7`](https://sepolia.etherscan.io/address/0xCc3053474A6FBEA77c3DDcADFA0b987498455aa7) |
+| **NotaryMediatedEscrow** | [`0xA88011F2D6B6DE39DfDD0B14e4e14B1C4e4e1fB9`](https://sepolia.etherscan.io/address/0xA88011F2D6B6DE39DfDD0B14e4e14B1C4e4e1fB9) |
+| **MultiSigWallet** | [`0x00449D7c7BfA2C31d7291E19A1348A96d7fe7824`](https://sepolia.etherscan.io/address/0x00449D7c7BfA2C31d7291E19A1348A96d7fe7824) |
+
+A funded **test escrow** was created at `0xF709210cd7082E2468bf6A90c9e0d76361808bbe` (5 ETH) so the 4-phase workflow can be walked end-to-end against the live deploy.
+
+- **Live frontend:** https://safeshamba.us.ci
+- Full deployment details: [DEPLOYMENT_SEPOLIA.md](DEPLOYMENT_SEPOLIA.md)
+- Audit report: [AUDIT_REPORT.md](AUDIT_REPORT.md)
 
 ## System Architecture
 
