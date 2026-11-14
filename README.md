@@ -2,6 +2,11 @@
 
 A P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
 
+> **Independence notice (NEAR AI Agents Hackathon):** SafeShamba is an independent
+> submission (Track 08 — Real-World Money). It shares no code with [**BotIn**](https://github.com/llakterian/BotIn),
+> our separate Track 07 submission.
+
+
 ## Deployment — Verified, Live (Sepolia)
 
 All contracts are **deployed and verified** on Sepolia testnet (chain 11155111), and the frontend is configured to talk to them. Click to inspect on Etherscan:
