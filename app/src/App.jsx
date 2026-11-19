@@ -2,10 +2,30 @@ import React, { useEffect, useState } from 'react'
 import { ethers } from 'ethers'
 import Folder from './components/Folder'
 import { PHASES, DOC_TYPES, FACTORY_ABI, ESCROW_ABI, MS_ABI } from './lib/abi'
+import { HUB, endpointOf, sendPhase, readInbox, phaseRef } from './lib/tapesend'
 
 const env = (k) => (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[k]) || ''
 const addr = (v) => { try { return ethers.utils.getAddress(v) } catch { return '' } }
 const fmt = (v) => { try { return ethers.utils.formatEther(v) } catch { return String(v) } }
+
+// X Layer (TapeOut Accelerate) — RPCs/chainIds verified live 2026-11-19 (eth_chainId: 0xc4 / 0x7a0)
+const XLAYER_CHAINS = {
+  196:  { chainId: '0xc4',  chainName: 'X Layer', rpcUrls: ['https://rpc.xlayer.tech'], nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 }, blockExplorerUrls: ['https://www.oklink.com/xlayer'] },
+  1952: { chainId: '0x7a0', chainName: 'X Layer Testnet', rpcUrls: ['https://testrpc.xlayer.tech'], nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 }, blockExplorerUrls: ['https://www.oklink.com/xlayer'] },
+}
+const CHAIN_NAMES = { 1: 'Ethereum', 56: 'BNB Chain', 8453: 'Base', 196: 'X Layer', 1952: 'X Layer Testnet', 11155111: 'Sepolia' }
+const TARGET_CHAIN = Number(env('VITE_XLAYER_CHAIN_ID') || 196)
+async function switchChain(id = TARGET_CHAIN) {
+  if (!window.ethereum) throw new Error('No Web3 wallet detected. Install MetaMask or a compatible wallet.')
+  const cfg = XLAYER_CHAINS[id]; if (!cfg) throw new Error(`Unknown chain ${id}.`)
+  try {
+    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: cfg.chainId }] })
+  } catch (e) {
+    const code = e?.code ?? e?.data?.originalError?.code
+    if (code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [cfg] })
+    else throw e
+  }
+}
 
 function useProvider() {
   const [state, setState] = useState({ account: '', chainId: null, provider: null, signer: null })
@@ -57,6 +77,7 @@ export default function App() {
       isTreasury: w.account && addr(w.account)===addr(treas),
       isMsOwner, owners, txCount
     })
+    loadTrail(a, details).catch(()=>{}) // best-effort: notification trail for this escrow
   }
   async function refresh(){ if(!escrowAddr) return; setBusy(true); setErr(''); try{ await loadEscrow(escrowAddr) }catch(e){ setErr(e.message) }finally{ setBusy(false) } }
 
@@ -75,16 +96,67 @@ export default function App() {
   async function runEscrow(fn){ if(!w.signer||!ctx) throw new Error('Connect wallet and load escrow.'); const c=new ethers.Contract(ctx.address, ESCROW_ABI, w.signer); const tx=await fn(c); await tx.wait(); await loadEscrow(ctx.address); return `Confirmed: ${tx.hash.slice(0,10)}…` }
   async function runMs(fn){ if(!w.signer||!ctx) throw new Error('Connect wallet and load escrow.'); const c=new ethers.Contract(ctx.multisig, MS_ABI, w.signer); const tx=await fn(c); await tx.wait(); await loadEscrow(ctx.address); return `Multisig tx confirmed: ${tx.hash.slice(0,10)}…` }
 
+  // --- TapeSend: on-chain notification trail for this escrow's participants ---
+  const participantRefs = (escrow) => new Set([0,1,2,3,4].map(p => phaseRef(escrow, p)))
+  async function loadTrail(escrow, details) {
+    if (!w.provider || !details) return
+    setTapeErr('')
+    if (!tape.container) { setTrail([]); return }
+    try {
+      const chainId = w.chainId || TARGET_CHAIN
+      const refs = participantRefs(escrow)
+      const people = [['Client', details.client], ['Seller', details.seller], ['Notary', details.notary]]
+      const seen = new Map()
+      for (const [label, who] of people) {
+        if (!who) continue
+        const r = await readInbox(w.provider, { endpoint: endpointOf(chainId, who), fromBlock: tape.fromBlock, limit: 20, chainId })
+        for (const it of r.items) if (it.ref && refs.has(it.ref.toLowerCase())) seen.set(it.index + who, { ...it, label, who })
+      }
+      setTrail([...seen.values()].sort((a,b)=>b.timestamp-a.timestamp).slice(0,12))
+    } catch (e) { setTapeErr(e?.message || String(e)) }
+  }
+  async function notifyPhase() {
+    if (!w.signer || !ctx) throw new Error('Connect wallet and load escrow.')
+    if (!tape.container) throw new Error('TapeSend container not configured (VITE_TAPE_CONTAINER).')
+    const chainId = w.chainId || TARGET_CHAIN
+    const ref = phaseRef(ctx.address, ctx.state)
+    const subject = `SafeShamba · ${PHASES[ctx.state] || 'Phase ' + ctx.state}`
+    const body = `Escrow ${ctx.address} entered ${PHASES[ctx.state] || ctx.state}. Document hashes and releases are enforced on-chain.`
+    const people = [['Client', ctx.client], ['Seller', ctx.seller], ['Notary', ctx.notary]]
+    const sent = []
+    for (const [label, who] of people) {
+      if (!who) continue
+      const r = await sendPhase({
+        signer: w.signer, circuits: tape.circuits, tokenId: tape.tokenId, cpuIndex: tape.cpu,
+        container: tape.container, holder: w.account, chainId,
+        to: endpointOf(chainId, who), subject, body, ref,
+      })
+      sent.push(`${label} #${r.inboxIndex}`)
+    }
+    await loadTrail(ctx.address, { client: ctx.client, seller: ctx.seller, notary: ctx.notary })
+    return `Notified ${sent.join(', ')} — sealed on-chain at hub ${HUB.slice(0,10)}…`
+  }
+
   const [cform,setCform]=useState({client:'',seller:'',notary:'',amount:'1.0'})
   const [ifm,setIfm]=useState({budget:'1.0',size:'1',purpose:'Land purchase',seller:'',notary:''})
   const [doc,setDoc]=useState({type:1,hash:''})
   const [fiat,setFiat]=useState({kes:'100000',rate:'130'})
   const [rates,setRates]=useState({deposit:'1000',fee:'200'})
   const [rel,setRel]=useState({purpose:'DD',to:'',amount:''})
+  // TapeSend (TAP-10) phase notifications — container minted in build stage 5
+  const tape = {
+    circuits: env('VITE_TAPE_CIRCUITS') || '0x1f09daefa827f02cbb40967cc91b259763760761', // TapeOut factory on X Layer (verified live)
+    tokenId: env('VITE_TAPE_TOKEN_ID') || '0',
+    cpu: env('VITE_TAPE_CPU') || '0',
+    container: env('VITE_TAPE_CONTAINER') || '',
+    fromBlock: Number(env('VITE_TAPE_FROM_BLOCK') || 0),
+  }
+  const [trail,setTrail]=useState([]); const [tapeErr,setTapeErr]=useState(''); const [tapeMsg,setTapeMsg]=useState('')
 
   useEffect(()=>{ if(w.account && !cform.client) setCform(f=>({...f,client:w.account})) },[w.account])
 
   const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '—'
+  const native = (w.chainId===196||w.chainId===1952) ? 'OKB' : 'ETH' // X Layer gas token is OKB
 
   return (
     <div className="shell">
@@ -92,6 +164,8 @@ export default function App() {
         <div className="brand"><h1>SafeShamba</h1><p>Secure land purchase with multisig custody. Personal console.</p></div>
         <div className="conn">
           {w.account ? <span className="pill mono">{w.account.slice(0,6)}…{w.account.slice(-4)}</span> : null}
+          {w.chainId ? <span className="pill" style={w.chainId===TARGET_CHAIN?{color:'var(--accent)'}:{color:'#e0a458'}} title={w.chainId===TARGET_CHAIN?'On the expected chain':'Wrong network — switch to X Layer'}>{CHAIN_NAMES[w.chainId]||`chain ${w.chainId}`}</span> : null}
+          {w.account && w.chainId!==TARGET_CHAIN ? <button className="btn secondary" onClick={()=>switchChain().catch(e=>setErr(e.message))}>Switch to X Layer</button> : null}
           <button className="btn" onClick={()=>w.connect().catch(e=>setErr(e.message))}>{w.account?'Connected':'Connect wallet'}</button>
         </div>
       </header>
@@ -112,8 +186,19 @@ export default function App() {
             <div className="addr-line"><strong>Notary</strong> {ctx.notary}</div>
             <div className="addr-line"><strong>Treasury</strong> {ctx.treasury}</div>
             <div className="addr-line"><strong>Multisig</strong> {ctx.multisig}</div>
-            <div>Deposited {fmt(ctx.amounts[4])} ETH · Released {fmt(ctx.amounts[5])} ETH · Multisig balance {fmt(ctx.balance)} ETH</div>
+            <div>Deposited {fmt(ctx.amounts[4])} {native} · Released {fmt(ctx.amounts[5])} {native} · Multisig balance {fmt(ctx.balance)} {native}</div>
             <div>DD {fmt(ctx.amounts[0])} · Facilitation {fmt(ctx.amounts[3])} · Deposit {fmt(ctx.amounts[1])} · Final {fmt(ctx.amounts[2])}</div>
+          </div></div> : null}
+          {ctx ? <div className="card"><div className="hd">TapeSend · notification trail</div><div className="bd stack note">
+            <div className="addr-line"><strong>Hub</strong> <span className="mono">{HUB.slice(0,10)}…{HUB.slice(-6)}</span> · {CHAIN_NAMES[w.chainId] || (w.chainId ? 'chain ' + w.chainId : '—')}</div>
+            {!tape.container ? <p style={{margin:0}}>Phase notifications activate once the SafeShamba container is minted on X Layer (build stage 5 → sets <span className="mono">VITE_TAPE_CONTAINER</span>).</p> : <>
+              {trail.length ? trail.map((t,i)=>(
+                <div key={i} className="addr-line" title={t.body||''}><strong>{t.label}</strong> {t.subject || 'phase update'} <span style={{opacity:.7}}>· {t.digestOk ? '✓ digest verified' : (t.openError || '…')} · {new Date(t.timestamp*1000).toLocaleString()}</span></div>
+              )) : <p style={{margin:0}}>No phase notifications yet for this escrow.</p>}
+              <div className="row"><button className="btn secondary" disabled={busy} onClick={async()=>{setBusy(true);setTapeErr('');setTapeMsg('');try{setTapeMsg(await notifyPhase())}catch(e){setTapeErr(e?.reason||e?.error?.message||e.message)}finally{setBusy(false)}}}>Notify participants of current phase</button></div>
+            </>}
+            {tapeMsg?<div className="status ok">{tapeMsg}</div>:null}
+            {tapeErr?<div className="err">{tapeErr}</div>:null}
           </div></div> : null}
         </aside>
 
@@ -123,7 +208,7 @@ export default function App() {
               <label>Client<input className="mono" value={cform.client} onChange={e=>setCform({...cform,client:e.target.value})}/></label>
               <label>Seller<input className="mono" value={cform.seller} onChange={e=>setCform({...cform,seller:e.target.value})}/></label>
               <label>Notary<input className="mono" value={cform.notary} onChange={e=>setCform({...cform,notary:e.target.value})}/></label>
-              <label>Total (ETH)<input value={cform.amount} onChange={e=>setCform({...cform,amount:e.target.value})}/></label>
+              <label>Total ({native})<input value={cform.amount} onChange={e=>setCform({...cform,amount:e.target.value})}/></label>
             </div>
             <div className="row"><button className="btn secondary" disabled={busy||!w.signer} onClick={async()=>{setBusy(true);setErr('');try{setErr(await createEscrow(cform))}catch(e){setErr(e?.reason||e.message)}finally{setBusy(false)}}}>Create via factory</button></div>
             <p style={{margin:0}}>Requires connected wallet and factory address. The factory initializes client/seller/notary atomically.</p>
@@ -131,7 +216,7 @@ export default function App() {
 
           {ctx && ctx.isClient ? <div className="phase-list">
             <Tx title="Client — Select plot" busy={busy} onRun={()=>runEscrow(c=>c.selectPlot(0))} note="Discovery → Plot selected."/>
-            <Tx title="Client — Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ETH) into multisig custody.`}/>
+            <Tx title="Client — Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ${native}) into multisig custody.`}/>
             <Tx title="Client — Verify document" busy={busy} onRun={()=>runEscrow(c=>c.verifyDocument(0, Number(doc.type)))}><label>Document type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label></Tx>
             <Tx title="Client — Proceed with purchase" busy={busy} onRun={()=>runEscrow(c=>c.proceedWithPurchase(0))}/>
             <Tx title="Client — Cancel (pre-execution)" busy={busy} onRun={()=>runEscrow(c=>c.cancelEscrow(0))} note="Only before execution; enables refund release authorization."/>
@@ -159,12 +244,12 @@ export default function App() {
           {ctx && ctx.isMsOwner ? <div className="card"><div className="hd">Multisig owner — submit authorized release</div><div className="bd stack note">
             <p style={{margin:0}}>Releases are <strong>state-gated</strong>: the escrow authorizes (escrowId, recipient, amount, purpose) only when the workflow state permits it. Submitting consumes the release slot and creates/confirms a multisig transaction.</p>
             <label>Purpose<select value={rel.purpose} onChange={async e=>{const p=e.target.value; const map={DD:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_DD_FEE(),FAC:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_FACILITATION(),REF:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_REFUND()}; setRel({...rel,purpose:p,_hash:map[p]})}}>
-              <option value="DD">DD_FEE → treasury ({fmt(ctx.amounts[0])} ETH)</option>
-              <option value="FAC">FACILITATION → treasury ({fmt(ctx.amounts[3])} ETH, after completion)</option>
-              <option value="REF">REFUND → client ({fmt(ctx.amounts[4]-ctx.amounts[5])} ETH, after cancel)</option>
+              <option value="DD">DD_FEE → treasury ({fmt(ctx.amounts[0])} {native})</option>
+              <option value="FAC">FACILITATION → treasury ({fmt(ctx.amounts[3])} {native}, after completion)</option>
+              <option value="REF">REFUND → client ({fmt(ctx.amounts[4]-ctx.amounts[5])} {native}, after cancel)</option>
             </select></label>
             <label>Recipient<input className="mono" value={rel.to} onChange={e=>setRel({...rel,to:e.target.value})} placeholder="defaults per purpose"/></label>
-            <label>Amount (ETH)<input value={rel.amount} onChange={e=>setRel({...rel,amount:e.target.value})} placeholder="defaults per purpose"/></label>
+            <label>Amount ({native})<input value={rel.amount} onChange={e=>setRel({...rel,amount:e.target.value})} placeholder="defaults per purpose"/></label>
             <div className="row"><button className="btn" disabled={busy} onClick={async()=>{
               setBusy(true);setErr('');try{
                 const ec=new ethers.Contract(ctx.address,ESCROW_ABI,w.provider);

@@ -63,6 +63,18 @@ module.exports = {
             url: process.env.ARBITRUM_SEPOLIA_RPC || "",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
             chainId: 421614
+        },
+        // X Layer TapeOut Accelerate — RPCs verified live (eth_chainId):
+        // mainnet 0xc4 (196), testnet 0x7a0 (1952; old 195 is deprecated)
+        xlayer: {
+            url: process.env.XLAYER_RPC || "https://rpc.xlayer.tech",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+            chainId: 196
+        },
+        xlayerTestnet: {
+            url: process.env.XLAYER_TESTNET_RPC || "https://testrpc.xlayer.tech",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+            chainId: 1952
         }
     },
     gasReporter: {

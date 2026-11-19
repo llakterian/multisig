@@ -4,7 +4,7 @@
   "description": "Notary-Mediated Land Purchase Platform with Multi-Sig Security",
   "main": "index.js",
   "scripts": {
-    "test": "hardhat test",
+    "test": "forge test",
     "compile": "hardhat compile",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "node": "hardhat node",
