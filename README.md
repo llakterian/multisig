@@ -6,6 +6,13 @@ A P2P/Escrow interface that bridges blockchain logic with real-world legal miles
 > submission (Track 08 — Real-World Money). It shares no code with [**BotIn**](https://github.com/llakterian/BotIn),
 > our separate Track 07 submission.
 
+> **X Layer / TapeOut:** this branch (`xlayer-tapeout`) adds the X Layer
+> deployment (chain 196, OKB gas), permanent **DeWEB** hosting in a circuit
+> container and **TapeSend (TAP-10)** escrow phase notifications.
+> Full write-up — deployment, TapeOut usage, fee model and the hub's live trust
+> state: **[docs/X_LAYER_TAPEOut.md](docs/X_LAYER_TAPEOut.md)**.
+> Live client check against chain 196: `node verify_tapesend.mjs` (27/27).
+
 
 ## Deployment — Verified, Live (Sepolia)
 

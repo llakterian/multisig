@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { ethers } from 'ethers'
 import Folder from './components/Folder'
 import { PHASES, DOC_TYPES, FACTORY_ABI, ESCROW_ABI, MS_ABI } from './lib/abi'
-import { HUB, endpointOf, sendPhase, readInbox, phaseRef } from './lib/tapesend'
+import { HUB, endpointOf, sendPhase, readInbox, phaseRef, hubStatus, containerIdentity } from './lib/tapesend'
 
 const env = (k) => (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[k]) || ''
 const addr = (v) => { try { return ethers.utils.getAddress(v) } catch { return '' } }
@@ -118,6 +118,7 @@ export default function App() {
   async function notifyPhase() {
     if (!w.signer || !ctx) throw new Error('Connect wallet and load escrow.')
     if (!tape.container) throw new Error('TapeSend container not configured (VITE_TAPE_CONTAINER).')
+    if (!tapeIdent) throw new Error('Could not read the container identity on-chain — check VITE_TAPE_CONTAINER and the network.')
     const chainId = w.chainId || TARGET_CHAIN
     const ref = phaseRef(ctx.address, ctx.state)
     const subject = `SafeShamba · ${PHASES[ctx.state] || 'Phase ' + ctx.state}`
@@ -127,14 +128,14 @@ export default function App() {
     for (const [label, who] of people) {
       if (!who) continue
       const r = await sendPhase({
-        signer: w.signer, circuits: tape.circuits, tokenId: tape.tokenId, cpuIndex: tape.cpu,
+        signer: w.signer, circuits: tapeIdent.circuits, tokenId: tapeIdent.tokenId, cpuIndex: tape.cpu,
         container: tape.container, holder: w.account, chainId,
         to: endpointOf(chainId, who), subject, body, ref,
       })
       sent.push(`${label} #${r.inboxIndex}`)
     }
     await loadTrail(ctx.address, { client: ctx.client, seller: ctx.seller, notary: ctx.notary })
-    return `Notified ${sent.join(', ')} — sealed on-chain at hub ${HUB.slice(0,10)}…`
+    return `Published ${sent.join(', ')} to the TapeSend hub ${HUB.slice(0,10)}…`
   }
 
   const [cform,setCform]=useState({client:'',seller:'',notary:'',amount:'1.0'})
@@ -152,8 +153,28 @@ export default function App() {
     fromBlock: Number(env('VITE_TAPE_FROM_BLOCK') || 0),
   }
   const [trail,setTrail]=useState([]); const [tapeErr,setTapeErr]=useState(''); const [tapeMsg,setTapeMsg]=useState('')
+  const [tapeIdent,setTapeIdent]=useState(null); const [hubState,setHubState]=useState(null)
 
   useEffect(()=>{ if(w.account && !cform.client) setCform(f=>({...f,client:w.account})) },[w.account])
+
+  // Resolve the container's on-chain identity (chainId, circuits contract, token id)
+  // and read the hub's trust state. Both are shown in the TapeSend card — the hub
+  // is a proxy the owner can still upgrade, so the app states the facts instead
+  // of implying a sealed, audited deployment.
+  useEffect(()=>{
+    let dead = false
+    async function load(){
+      if(!w.provider) return
+      if(tape.container){
+        try { const id = await containerIdentity(w.provider, tape.container); if(!dead) setTapeIdent(id) }
+        catch(e) { if(!dead) setTapeIdent(null) }
+      }
+      try { const hs = await hubStatus(w.provider, w.chainId || TARGET_CHAIN); if(!dead) setHubState(hs) }
+      catch(e) { if(!dead) setHubState(null) }
+    }
+    load()
+    return ()=>{ dead = true }
+  },[w.provider, w.chainId, tape.container])
 
   const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '—'
   const native = (w.chainId===196||w.chainId===1952) ? 'OKB' : 'ETH' // X Layer gas token is OKB
@@ -191,7 +212,12 @@ export default function App() {
           </div></div> : null}
           {ctx ? <div className="card"><div className="hd">TapeSend · notification trail</div><div className="bd stack note">
             <div className="addr-line"><strong>Hub</strong> <span className="mono">{HUB.slice(0,10)}…{HUB.slice(-6)}</span> · {CHAIN_NAMES[w.chainId] || (w.chainId ? 'chain ' + w.chainId : '—')}</div>
+            {hubState ? <>
+              <div className="addr-line"><strong>Hub impl</strong> <span className="mono">{hubState.implementation ? hubState.implementation.slice(0,10)+'…'+hubState.implementation.slice(-6) : '—'}</span> · {hubState.expectedImplementation ? 'audited build' : 'not the published audited build'} · {hubState.sealed ? 'sealed' : 'owner can still upgrade'}</div>
+              <p style={{margin:0}}>Read live from the chain on every load. The hub is a proxy: until it is sealed, its owner can replace the implementation, so notifications are verifiable but not yet final.</p>
+            </> : null}
             {!tape.container ? <p style={{margin:0}}>Phase notifications activate once the SafeShamba container is minted on X Layer (build stage 5 → sets <span className="mono">VITE_TAPE_CONTAINER</span>).</p> : <>
+              {tapeIdent ? <div className="addr-line"><strong>Container</strong> <span className="mono">{tape.container.slice(0,10)}…{tape.container.slice(-6)}</span> · circuit <span className="mono">{tapeIdent.circuits.slice(0,10)}…</span> · token #{tapeIdent.tokenId}</div> : null}
               {trail.length ? trail.map((t,i)=>(
                 <div key={i} className="addr-line" title={t.body||''}><strong>{t.label}</strong> {t.subject || 'phase update'} <span style={{opacity:.7}}>· {t.digestOk ? '✓ digest verified' : (t.openError || '…')} · {new Date(t.timestamp*1000).toLocaleString()}</span></div>
               )) : <p style={{margin:0}}>No phase notifications yet for this escrow.</p>}
