@@ -84,7 +84,7 @@ export default function App() {
 
   useEffect(()=>{ if(w.account && !cform.client) setCform(f=>({...f,client:w.account})) },[w.account])
 
-  const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '—'
+  const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '-'
 
   return (
     <div className="shell">
@@ -130,33 +130,33 @@ export default function App() {
           </div></div>
 
           {ctx && ctx.isClient ? <div className="phase-list">
-            <Tx title="Client — Select plot" busy={busy} onRun={()=>runEscrow(c=>c.selectPlot(0))} note="Discovery → Plot selected."/>
-            <Tx title="Client — Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ETH) into multisig custody.`}/>
-            <Tx title="Client — Verify document" busy={busy} onRun={()=>runEscrow(c=>c.verifyDocument(0, Number(doc.type)))}><label>Document type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label></Tx>
-            <Tx title="Client — Proceed with purchase" busy={busy} onRun={()=>runEscrow(c=>c.proceedWithPurchase(0))}/>
-            <Tx title="Client — Cancel (pre-execution)" busy={busy} onRun={()=>runEscrow(c=>c.cancelEscrow(0))} note="Only before execution; enables refund release authorization."/>
+            <Tx title="Client: Select plot" busy={busy} onRun={()=>runEscrow(c=>c.selectPlot(0))} note="Discovery → Plot selected."/>
+            <Tx title="Client: Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ETH) into multisig custody.`}/>
+            <Tx title="Client: Verify document" busy={busy} onRun={()=>runEscrow(c=>c.verifyDocument(0, Number(doc.type)))}><label>Document type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label></Tx>
+            <Tx title="Client: Proceed with purchase" busy={busy} onRun={()=>runEscrow(c=>c.proceedWithPurchase(0))}/>
+            <Tx title="Client: Cancel (pre-execution)" busy={busy} onRun={()=>runEscrow(c=>c.cancelEscrow(0))} note="Only before execution; enables refund release authorization."/>
           </div> : null}
 
           {ctx && (ctx.isNotary || ctx.isTreasury) ? <div className="phase-list">
-            <Tx title="Treasury/Notary — Upload gallery (advance to discovery)" busy={busy} onRun={()=>runEscrow(c=>c.uploadDigitalGallery(0))}/>
-            <Tx title="Notary — Upload document hash" busy={busy} onRun={()=>runEscrow(c=>c.uploadDocument(0, Number(doc.type), doc.hash||ethers.constants.HashZero))}>
+            <Tx title="Treasury/Notary: Upload gallery (advance to discovery)" busy={busy} onRun={()=>runEscrow(c=>c.uploadDigitalGallery(0))}/>
+            <Tx title="Notary: Upload document hash" busy={busy} onRun={()=>runEscrow(c=>c.uploadDocument(0, Number(doc.type), doc.hash||ethers.constants.HashZero))}>
               <label>Type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label>
               <label>Hash (bytes32)<input className="mono" value={doc.hash} onChange={e=>setDoc({...doc,hash:e.target.value})} placeholder="0x…"/></label>
             </Tx>
-            <Tx title="Notary — Set negotiated rates" busy={busy} onRun={()=>runEscrow(c=>c.setNegotiatedRates(0, Number(rates.deposit), Number(rates.fee)))}>
+            <Tx title="Notary: Set negotiated rates" busy={busy} onRun={()=>runEscrow(c=>c.setNegotiatedRates(0, Number(rates.deposit), Number(rates.fee)))}>
               <div className="grid-2">
                 <label>Deposit (bp)<input value={rates.deposit} onChange={e=>setRates({...rates,deposit:e.target.value})}/></label>
                 <label>Facilitation fee (bp, ≤500)<input value={rates.fee} onChange={e=>setRates({...rates,fee:e.target.value})}/></label>
               </div>
             </Tx>
-            <Tx title="Notary — Execute fiat bridge" busy={busy} onRun={()=>runEscrow(c=>c.executeFiatBridge(0, ethers.BigNumber.from(fiat.kes||'0'), ethers.BigNumber.from(fiat.rate||'0')))}>
+            <Tx title="Notary: Execute fiat bridge" busy={busy} onRun={()=>runEscrow(c=>c.executeFiatBridge(0, ethers.BigNumber.from(fiat.kes||'0'), ethers.BigNumber.from(fiat.rate||'0')))}>
               <div className="grid-2"><label>KES amount<input value={fiat.kes} onChange={e=>setFiat({...fiat,kes:e.target.value})}/></label><label>Exchange rate<input value={fiat.rate} onChange={e=>setFiat({...fiat,rate:e.target.value})}/></label></div>
             </Tx>
-            <Tx title="Notary — Upload lodgement receipt" busy={busy} onRun={()=>runEscrow(c=>c.uploadLodgementReceipt(0, doc.hash||ethers.constants.HashZero, Math.floor(Date.now()/1000)+30*86400))}/>
-            <Tx title="Notary — Complete transfer" busy={busy} onRun={()=>runEscrow(c=>c.completeTransfer(0, doc.hash||ethers.constants.HashZero, 'TRACKING'))}/>
+            <Tx title="Notary: Upload lodgement receipt" busy={busy} onRun={()=>runEscrow(c=>c.uploadLodgementReceipt(0, doc.hash||ethers.constants.HashZero, Math.floor(Date.now()/1000)+30*86400))}/>
+            <Tx title="Notary: Complete transfer" busy={busy} onRun={()=>runEscrow(c=>c.completeTransfer(0, doc.hash||ethers.constants.HashZero, 'TRACKING'))}/>
           </div> : null}
 
-          {ctx && ctx.isMsOwner ? <div className="card"><div className="hd">Multisig owner — submit authorized release</div><div className="bd stack note">
+          {ctx && ctx.isMsOwner ? <div className="card"><div className="hd">Multisig owner, submit authorized release</div><div className="bd stack note">
             <p style={{margin:0}}>Releases are <strong>state-gated</strong>: the escrow authorizes (escrowId, recipient, amount, purpose) only when the workflow state permits it. Submitting consumes the release slot and creates/confirms a multisig transaction.</p>
             <label>Purpose<select value={rel.purpose} onChange={async e=>{const p=e.target.value; const map={DD:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_DD_FEE(),FAC:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_FACILITATION(),REF:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_REFUND()}; setRel({...rel,purpose:p,_hash:map[p]})}}>
               <option value="DD">DD_FEE → treasury ({fmt(ctx.amounts[0])} ETH)</option>
