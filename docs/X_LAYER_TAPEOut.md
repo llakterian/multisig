@@ -1,7 +1,7 @@
-# SafeShamba on X Layer — deployment, TapeOut usage and fee model
+# SafeShamba on X Layer: deployment, TapeOut usage and fee model
 
 This document covers the work done for the **OKX X Layer TapeOut Accelerate**
-event (Oct 16 – Dec 7, 2026): deploying the escrow contracts on X Layer, hosting
+event (Oct 16 to Dec 7, 2026): deploying the escrow contracts on X Layer, hosting
 the app permanently on-chain through **DeWEB**, and wiring the escrow phase
 notifications through **TapeSend (TAP-10)**.
 
@@ -19,8 +19,8 @@ web host. X Layer gives three things this product needs:
 | Need | X Layer / TapeOut answer |
 |---|---|
 | Cheap, fast settlement in a stablecoin economy | OKB gas, chain 196 |
-| An app that cannot be switched off by a host | DeWEB — the frontend's bytes live in the **SiteRegistry** inside a circuit container |
-| A verifiable notification trail without a server | **TapeSend / TAP-10** — escrow phase changes published on-chain between container inboxes |
+| An app that cannot be switched off by a host | DeWEB, the frontend's bytes live in the **SiteRegistry** inside a circuit container |
+| A verifiable notification trail without a server | **TapeSend / TAP-10**, escrow phase changes published on-chain between container inboxes |
 
 ---
 
@@ -32,7 +32,7 @@ web host. X Layer gives three things this product needs:
 | RPC | `https://rpc.xlayer.tech` |
 | Testnet RPC | `https://testrpc.xlayer.tech` (chain id 1952 / `0x7a0`) |
 | Explorer | https://www.oklink.com/xlayer |
-| Native token | **OKB** (18 decimals) — escrow fees are denominated in OKB |
+| Native token | **OKB** (18 decimals), escrow fees are denominated in OKB |
 | TapeOut community factory | `0x1f09daefa827f02cbb40967cc91b259763760761` |
 | TapeSend hub (DeWEB) | `0xe61A9C7213a6Aa616C246a2B569e555B417b25ee` |
 
@@ -63,12 +63,12 @@ chain and the native symbol (OKB on 196, ETH elsewhere) in the header.
 
 ## 3. How TapeOut is used
 
-### 3.1 DeWEB hosting — the app lives on-chain
+### 3.1 DeWEB hosting: the app lives on-chain
 
 The production frontend is a static Vite build. It is published into the
 **SiteRegistry** inside a circuit container on X Layer, which gives the project:
 
-- a **`tape://` address** — the site's real home, not a redirect;
+- a **`tape://` address**: the site's real home, not a redirect;
 - a **TapeKit gateway link** (`https://…tapekit.org`) for ordinary browsers;
 - byte-level verification on read (the registry checks SHA-256 per chunk), so
   visitors can verify they are loading the same bytes the publisher committed.
@@ -85,20 +85,20 @@ can take the escrow UI offline.**
 
 Opening a container mints an ERC-6551 account whose identity is
 `(chainId, circuitsContract, tokenId)`. The frontend reads that identity back
-from the chain — `container.token()` — instead of trusting a build-time
+from the chain, `container.token()`. Instead of trusting a build-time
 constant, so a container can never be confused with another one:
 
 ```js
 const { chainId, circuits, tokenId } = await containerIdentity(provider, container)
 ```
 
-### 3.3 TapeSend (TAP-10) — escrow phase notifications
+### 3.3 TapeSend (TAP-10): escrow phase notifications
 
 When the escrow changes state (Intake → Discovery/Due-Diligence → Execution →
 Settlement), the client publishes a TAP-10 message to each participant's
 container inbox through the DeWEB hub.
 
-**Endpoint format (TAP-10 §2.2)** — 32 bytes, globally unique:
+**Endpoint format (TAP-10 §2.2)**: 32 bytes, globally unique:
 
 ```
 uint32(0) ‖ uint64(chainId) ‖ address(container)
@@ -110,13 +110,13 @@ uint32(0) ‖ uint64(chainId) ‖ address(container)
 phaseRef(escrow, phase) = keccak256(abi.encode(address escrow, uint8 phase))
 ```
 
-**Payload** — a TAP-10 public payload, or a sealed payload (X25519 +
+**Payload**. A TAP-10 public payload, or a sealed payload (X25519 +
 XChaCha20-Poly1305, TAP-10 §5) addressed to the recipient's published key
 whenever the hub reports that key as usable. The private key is never stored:
 it is re-derived from a wallet signature on demand (TAP-10 §4.2, two-signature
 determinism check) and only lives in memory.
 
-**Verification** — the hub stores `keccak256(ref ‖ keccak256(payload))` for every
+**Verification**. The hub stores `keccak256(ref ‖ keccak256(payload))` for every
 message. The client recomputes that digest from the event payload and compares
 it with the value the hub reports in `inboxPage()`, so a message is only shown as
 delivered when its bytes hash to the stored digest:
@@ -126,7 +126,7 @@ const digest = keccak256(concat([ref, keccak256(payload)]))
 verified = digest === entry.digest
 ```
 
-This gives an escrow a **notification trail that no party — including us — can
+This gives an escrow a **notification trail that no party, including us, can
 rewrite**, without running a server.
 
 #### Implementation files
@@ -152,7 +152,7 @@ processor-index lookup. All of them pass against the live chain.
 
 ---
 
-## 4. The hub's trust state — stated, not hidden
+## 4. The hub's trust state: stated, not hidden
 
 The TapeSend hub at `0xe61A9C7213a6Aa616C246a2B569e555B417b25ee` is the same
 proxy address on every chain. Read live on 2026-11-23:
@@ -166,7 +166,7 @@ proxy address on every chain. Read live on 2026-11-23:
 What that means, in plain terms:
 
 1. **The hub is not sealed.** Until `seal()` is called, its owner can replace the
-   implementation — i.e. the rules of the message layer can still change.
+   implementation, i.e. The rules of the message layer can still change.
 2. **On X Layer the running implementation is not the one TapeKit publishes as
    audited for chain 196** (`0xdcc57797089ebd9f26e686379a4323f353a3f9c6`). Both
    expose the same TAP-10 function selectors, but the live one predates the
@@ -201,15 +201,15 @@ so a release cannot be replayed or over-claimed.
 
 ---
 
-## 6. New development during the event (Oct 16 – Dec 7, 2026)
+## 6. New development during the event (Oct 16 to Dec 7, 2026)
 
-1. **Contracts redeployed to X Layer** — fresh addresses on chain 196, OKB gas,
+1. **Contracts redeployed to X Layer**: fresh addresses on chain 196, OKB gas,
    verified on the OKLink explorer.
-2. **DeWEB hosting** — the frontend published into a circuit container, giving a
+2. **DeWEB hosting**: the frontend published into a circuit container, giving a
    permanent `tape://` address and a byte-verified gateway link.
-3. **TapeSend (TAP-10) integration** — the escrow phase trail, with hub trust
+3. **TapeSend (TAP-10) integration**: the escrow phase trail, with hub trust
    reads, digest verification and a live check script (27/27 against chain 196).
-4. **X Layer documentation** — this file, plus the deployment runbook and the
+4. **X Layer documentation**: this file, plus the deployment runbook and the
    frontend's chain-switching/fee-token handling.
 5. **Demo video** (≤3 minutes) recorded against the live X Layer build.
 

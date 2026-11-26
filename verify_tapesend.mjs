@@ -19,7 +19,7 @@ const ok = (b) => (b ? 'PASS' : 'FAIL')
 let failures = 0
 function check(label, cond, extra = '') {
   if (!cond) failures++
-  console.log(`  [${ok(cond)}] ${label}${extra ? ' — ' + extra : ''}`)
+  console.log(`  [${ok(cond)}] ${label}${extra ? ', ' + extra : ''}`)
 }
 
 async function main() {
@@ -65,7 +65,7 @@ async function main() {
   console.log('    inboxPage entries:', page.length)
   if (page.length) console.log('    first entry:', JSON.stringify(page[0], null, 2).replace(/\n/g, '\n    '))
 
-  console.log('\n=== 6. readInbox() (no Sent logs on X Layer — must not hard-fail) ===')
+  console.log('\n=== 6. readInbox() (no Sent logs on X Layer, must not hard-fail) ===')
   const trail = await readInbox(provider, { endpoint: ep, limit: 20, chainId: CHAIN_ID })
   console.log('   ', JSON.stringify(trail, null, 2).replace(/\n/g, '\n    '))
   check('readInbox returns a total', typeof trail.total === 'number')
@@ -92,7 +92,7 @@ async function main() {
   console.log('    ours :', ourDigest)
   check('digest recomputation matches the hub', hubDigest.toLowerCase() === ourDigest.toLowerCase())
 
-  console.log('\n=== 10. containerIdentity() — the identity the hub API expects ===')
+  console.log('\n=== 10. containerIdentity(). The identity the hub API expects ===')
   const ident = await containerIdentity(provider, CONTAINER)
   console.log('   ', JSON.stringify(ident, null, 2).replace(/\n/g, '\n    '))
   check('chainId decoded', ident.chainId === 196)
@@ -101,7 +101,7 @@ async function main() {
   const identHub = await hub.accountOf(ident.circuits, ident.tokenId)
   check('hub.accountOf(circuits, tokenId) == container', utilsAddr(identHub).toLowerCase() === CONTAINER.toLowerCase())
 
-  console.log('\n=== 11. processorIndex() — locate the processor in the factory table ===')
+  console.log('\n=== 11. processorIndex(), locate the processor in the factory table ===')
   const cpu = await processorIndex(provider, FACTORY, ident.circuits)
   console.log('    processor index:', cpu)
   check('processor index found', cpu >= 0)

@@ -1,9 +1,9 @@
 // TAP-10 / TapeSend integration for SafeShamba on X Layer (TapeOut Accelerate)
 //
 // Vendored reference crypto lives in ./tap10 (MIT, from TapeOutProtocol/TapeKit,
-// send/module — key derivation, sealing, content encoding). Chain reads/writes go
+// send/module, key derivation, sealing, content encoding). Chain reads/writes go
 // through ethers against the DeWEB hub; the hub proxy address is deterministic and
-// identical on every chain (same on BNB, Base and X Layer — verified live on 196).
+// identical on every chain (same on BNB, Base and X Layer, verified live on 196).
 //
 // ── Live hub facts, re-verified on X Layer mainnet 2026-11-23 ─────────────────
 //   proxy 0xe61A9C7213a6Aa616C246a2B569e555B417b25ee has code; the hub was
@@ -15,16 +15,16 @@
 //     Both implementations expose the same TAP-10 function selectors, but the
 //     live one does NOT expose circuitCodehash(). hubStatus() below reports
 //     this honestly instead of hiding it.
-//   * keyFor(circuits, tokenId) returns a 10-field KeyView struct — NOT bytes32.
+//   * keyFor(circuits, tokenId) returns a 10-field KeyView struct: NOT bytes32.
 //     The earlier bytes32 ABI was wrong and would have reverted on decode.
 //   * keyOf(container) returns the raw 7-field KeyRecord.
 //   * inboxPage(to, start, n) returns Entry[] = (from, blockNumber, timestamp,
 //     digest); the payload itself only exists in the Sent event log.
 //   * The public X Layer RPCs reject eth_getLogs over a 100-block range, so the
 //     Sent-event scan is windowed (see SENT_SCAN_WINDOW).
-//   * No Sent events exist on X Layer yet — the hub is live but unused there.
+//   * No Sent events exist on X Layer yet. The hub is live but unused there.
 //
-// TAP-10 §2.2 endpoint: uint32(0) ‖ uint64(chainId) ‖ container — 32 bytes.
+// TAP-10 §2.2 endpoint: uint32(0) ‖ uint64(chainId) ‖ container: 32 bytes.
 import { ethers } from 'ethers'
 import {
   keyDerivationText, isDeterministic, deriveKeyPair,
@@ -34,13 +34,13 @@ import {
 export const HUB = '0xe61A9C7213a6Aa616C246a2B569e555B417b25ee'
 export const SUITE_X25519 = 1
 
-/** ERC-1967 implementation slot — where the hub proxy keeps its logic address. */
+/** ERC-1967 implementation slot, where the hub proxy keeps its logic address. */
 export const IMPL_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc'
 
 /**
  * TapeKit's published audited implementations per chain (send/module/src/chain.js).
  * On X Layer the live proxy points at a different address than the one published
- * there — we surface that as `expectedImplementation: false` rather than hiding it.
+ * there. We surface that as `expectedImplementation: false` rather than hiding it.
  */
 export const AUDITED_HUB_IMPLEMENTATIONS = {
   56: ['0x80afe7b77f2dfd08e9feab7675780bac34a7ee85'],
@@ -69,7 +69,7 @@ const HUB_ABI = [
   'event Sent(bytes32 indexed to, address indexed from, bytes32 indexed ref, uint256 inboxIndex, uint256 outboxIndex, bytes payload)',
 ]
 
-/** TAP-10 §2.2 endpoint: uint32(0) ‖ uint64(chainId) ‖ container — 32 bytes, globally unique. */
+/** TAP-10 §2.2 endpoint: uint32(0) ‖ uint64(chainId) ‖ container: 32 bytes, globally unique. */
 export function endpointOf(chainId, container) {
   return ethers.utils.hexConcat([
     '0x00000000',
@@ -82,7 +82,7 @@ export function endpointOf(chainId, container) {
  * The identity a TapeOut container was minted with.
  *
  * The hub's send()/keyFor() take `circuits` = the *processor* (CPU) address the
- * container belongs to, plus the container's token id — NOT the factory address.
+ * container belongs to, plus the container's token id: NOT the factory address.
  * Reading it back from the container is the authoritative way to get both
  * (verified live on X Layer: container.token() → (196, 0x839bdd…574e, 1)).
  */
@@ -102,7 +102,7 @@ export function hubContract(runner) {
 
 /**
  * Read the ERC-1967 implementation slot from the hub proxy.
- * ethers v5 exposes getStorageAt(); v6 exposes getStorage() — support both.
+ * ethers v5 exposes getStorageAt(); v6 exposes getStorage(), support both.
  */
 export async function readImplSlot(provider) {
   if (typeof provider.getStorageAt === 'function') return provider.getStorageAt(HUB, IMPL_SLOT)
@@ -149,7 +149,7 @@ export async function deriveKeys({ signer, holder, tokenId, cpuIndex, container,
   const text = keyDerivationText({ tokenId, cpuIndex, container, holder, hub: HUB, chainId, keyIndex })
   const s1 = await signer.signMessage(text)
   const s2 = await signer.signMessage(text)
-  if (!isDeterministic(s1, s2)) throw new Error('wallet is not deterministic — refusing to derive a TapeSend key')
+  if (!isDeterministic(s1, s2)) throw new Error('wallet is not deterministic, refusing to derive a TapeSend key')
   return deriveKeyPair({ signature: s1, holder, tokenId, cpuIndex, container, hub: HUB, chainId, keyIndex })
 }
 
@@ -260,7 +260,7 @@ export async function sendPhase({ signer, circuits, tokenId, cpuIndex, container
  * each verified against the hub digest (keccak256(ref ‖ keccak256(payload))).
  *
  * The payload lives only in the event log, and the public X Layer RPCs cap
- * eth_getLogs at 100 blocks — so the scan is windowed backwards from the head
+ * eth_getLogs at 100 blocks. So the scan is windowed backwards from the head
  * and the window size is configurable.
  */
 export async function readInbox(provider, { endpoint, start = 0, limit = 20, fromBlock = 0, secretKey = null, chainId = 196, scanWindow = SENT_SCAN_WINDOW }) {
@@ -322,7 +322,7 @@ async function scanSentEvents(provider, endpoint, fromBlock = 0, window = SENT_S
   const head = await provider.getBlockNumber()
   const floor = Math.max(0, fromBlock || 0)
   const found = []
-  const maxSlices = 50 // ≤ 5,000 blocks of history per read — enough for a demo, bounded for the browser
+  const maxSlices = 50 // ≤ 5,000 blocks of history per read, enough for a demo, bounded for the browser
   let to = head
   for (let slice = 0; slice < maxSlices && to >= floor; slice++) {
     const from = Math.max(floor, to - window + 1)

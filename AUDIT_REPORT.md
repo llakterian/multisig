@@ -15,19 +15,19 @@
 2. **`receive()` on escrow:** accepts ETH (no forwarding). Document intended behavior; consider restricting or forwarding.
 3. **`EscrowFactory.createEscrow` is permissionless:** anyone can create escrows (counts toward user mappings). Acceptable for open use, but consider rate/abuse implications for UI/indexing.
 4. **Document/signing flow simplified:** draft upload/sign/both-signed/notarize helpers from the prior version are not fully present in the hardened minimal flow; reintroduce with tests if required by product scope.
-5. **Solhint (104 warnings):** NatSpec, custom errors, `uint256` style — non-blocking; address incrementally.
+5. **Solhint (104 warnings):** NatSpec, custom errors, `uint256` style: non-blocking; address incrementally.
 6. **Static analyzers:** Slither/Mythril not executed in this environment. Run before any value deployment: `slither .` (with remaps) and Mythril on each contract; triage all medium+.
 7. **Frontend auth/roles:** UI is read/progress-oriented; write actions must enforce role and show clear transaction intent. Never expose secrets/keys.
 
 ## Tests
-`forge test` — 9/9 passing (`SecurityAuditTest`, `WorkflowTest`).
+`forge test`: 9/9 passing (`SecurityAuditTest`, `WorkflowTest`).
 
 ## Fund-release design (implemented)
 **Pattern:** state-gated multisig release submissions (authorization + consume, not raw pull). Custody remains in `MultiSigWallet` (no direct escrow payout). `NotaryMediatedEscrow` implements `IReleaseAuthorizer`:
-- `releaseAuthorized(escrowId,to,amount,purpose)` — pure/state view; checks escrow state, recipient, amount, and that the slot isn’t consumed.
-- `consumeRelease(...)` — **only** callable by the escrow’s `MultiSigWallet`; marks `releaseConsumed[id][purpose]`, records amount, increments `releasedAmount`. Reverts if not authorized.
+- `releaseAuthorized(escrowId,to,amount,purpose)`: pure/state view; checks escrow state, recipient, amount, and that the slot isn’t consumed.
+- `consumeRelease(...)`: **only** callable by the escrow’s `MultiSigWallet`; marks `releaseConsumed[id][purpose]`, records amount, increments `releasedAmount`. Reverts if not authorized.
 - Purposes: `P_DD_FEE` (treasury, `dueDiligenceFee`, after funding, pre-cancel), `P_FACILITATION` (treasury, `facilitationFee`, **Completed**), `P_REFUND` (client, ≤ deposited-released, **Cancelled** pre-execution), `P_SELLER_PROCEEDS` reserved (tighten amount/state before enabling for real disbursement).
 
 `MultiSigWallet.submitAuthorizedRelease(escrow,escrowId,to,value,purpose)` (owner-only): verifies via escrow, consumes slot, submits a value-transfer tx, auto-confirms submitter. Execution follows normal confirmations/threshold (auto-exec at threshold=1). **Properties:** no duplicate release submission (slot consumed), no release when state disallows, multisig owners retain execution control.
 
-**Residual:** Seller proceeds need a finalized disbursement policy (who receives fiat vs on-chain remainder, exact cap). Refund is allowed only in early states (`<= DueDiligencePending`) — extend policy explicitly if post-DD refunds are required. Direct `receive()` on escrow reverts (`Use fundEscrow`).
+**Residual:** Seller proceeds need a finalized disbursement policy (who receives fiat vs on-chain remainder, exact cap). Refund is allowed only in early states (`<= DueDiligencePending`), extend policy explicitly if post-DD refunds are required. Direct `receive()` on escrow reverts (`Use fundEscrow`).

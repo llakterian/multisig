@@ -1,4 +1,4 @@
-// TapeSend hub trust probe — read the hub's trust state on every supported chain
+// TapeSend hub trust probe, read the hub's trust state on every supported chain
 // and diff the running implementation against TapeKit's published audited one.
 //
 //   node probe_hub_trust.js

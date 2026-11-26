@@ -8,7 +8,7 @@ const env = (k) => (typeof import.meta !== 'undefined' && import.meta.env && imp
 const addr = (v) => { try { return ethers.utils.getAddress(v) } catch { return '' } }
 const fmt = (v) => { try { return ethers.utils.formatEther(v) } catch { return String(v) } }
 
-// X Layer (TapeOut Accelerate) — RPCs/chainIds verified live 2026-11-19 (eth_chainId: 0xc4 / 0x7a0)
+// X Layer (TapeOut Accelerate): RPCs/chainIds verified live 2026-11-19 (eth_chainId: 0xc4 / 0x7a0)
 const XLAYER_CHAINS = {
   196:  { chainId: '0xc4',  chainName: 'X Layer', rpcUrls: ['https://rpc.xlayer.tech'], nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 }, blockExplorerUrls: ['https://www.oklink.com/xlayer'] },
   1952: { chainId: '0x7a0', chainName: 'X Layer Testnet', rpcUrls: ['https://testrpc.xlayer.tech'], nativeCurrency: { name: 'OKB', symbol: 'OKB', decimals: 18 }, blockExplorerUrls: ['https://www.oklink.com/xlayer'] },
@@ -118,7 +118,7 @@ export default function App() {
   async function notifyPhase() {
     if (!w.signer || !ctx) throw new Error('Connect wallet and load escrow.')
     if (!tape.container) throw new Error('TapeSend container not configured (VITE_TAPE_CONTAINER).')
-    if (!tapeIdent) throw new Error('Could not read the container identity on-chain — check VITE_TAPE_CONTAINER and the network.')
+    if (!tapeIdent) throw new Error('Could not read the container identity on-chain, check VITE_TAPE_CONTAINER and the network.')
     const chainId = w.chainId || TARGET_CHAIN
     const ref = phaseRef(ctx.address, ctx.state)
     const subject = `SafeShamba · ${PHASES[ctx.state] || 'Phase ' + ctx.state}`
@@ -144,7 +144,7 @@ export default function App() {
   const [fiat,setFiat]=useState({kes:'100000',rate:'130'})
   const [rates,setRates]=useState({deposit:'1000',fee:'200'})
   const [rel,setRel]=useState({purpose:'DD',to:'',amount:''})
-  // TapeSend (TAP-10) phase notifications — container minted in build stage 5
+  // TapeSend (TAP-10) phase notifications, container minted in build stage 5
   const tape = {
     circuits: env('VITE_TAPE_CIRCUITS') || '0x1f09daefa827f02cbb40967cc91b259763760761', // TapeOut factory on X Layer (verified live)
     tokenId: env('VITE_TAPE_TOKEN_ID') || '0',
@@ -158,7 +158,7 @@ export default function App() {
   useEffect(()=>{ if(w.account && !cform.client) setCform(f=>({...f,client:w.account})) },[w.account])
 
   // Resolve the container's on-chain identity (chainId, circuits contract, token id)
-  // and read the hub's trust state. Both are shown in the TapeSend card — the hub
+  // and read the hub's trust state. Both are shown in the TapeSend card. The hub
   // is a proxy the owner can still upgrade, so the app states the facts instead
   // of implying a sealed, audited deployment.
   useEffect(()=>{
@@ -176,7 +176,7 @@ export default function App() {
     return ()=>{ dead = true }
   },[w.provider, w.chainId, tape.container])
 
-  const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '—'
+  const role = ctx ? (ctx.isClient?'Client':ctx.isNotary?'Notary':ctx.isTreasury?'Treasury':ctx.isMsOwner?'Multisig owner':ctx.isSeller?'Seller':'Observer') : '-'
   const native = (w.chainId===196||w.chainId===1952) ? 'OKB' : 'ETH' // X Layer gas token is OKB
 
   return (
@@ -185,7 +185,7 @@ export default function App() {
         <div className="brand"><h1>SafeShamba</h1><p>Secure land purchase with multisig custody. Personal console.</p></div>
         <div className="conn">
           {w.account ? <span className="pill mono">{w.account.slice(0,6)}…{w.account.slice(-4)}</span> : null}
-          {w.chainId ? <span className="pill" style={w.chainId===TARGET_CHAIN?{color:'var(--accent)'}:{color:'#e0a458'}} title={w.chainId===TARGET_CHAIN?'On the expected chain':'Wrong network — switch to X Layer'}>{CHAIN_NAMES[w.chainId]||`chain ${w.chainId}`}</span> : null}
+          {w.chainId ? <span className="pill" style={w.chainId===TARGET_CHAIN?{color:'var(--accent)'}:{color:'#e0a458'}} title={w.chainId===TARGET_CHAIN?'On the expected chain':'Wrong network, switch to X Layer'}>{CHAIN_NAMES[w.chainId]||`chain ${w.chainId}`}</span> : null}
           {w.account && w.chainId!==TARGET_CHAIN ? <button className="btn secondary" onClick={()=>switchChain().catch(e=>setErr(e.message))}>Switch to X Layer</button> : null}
           <button className="btn" onClick={()=>w.connect().catch(e=>setErr(e.message))}>{w.account?'Connected':'Connect wallet'}</button>
         </div>
@@ -211,9 +211,9 @@ export default function App() {
             <div>DD {fmt(ctx.amounts[0])} · Facilitation {fmt(ctx.amounts[3])} · Deposit {fmt(ctx.amounts[1])} · Final {fmt(ctx.amounts[2])}</div>
           </div></div> : null}
           {ctx ? <div className="card"><div className="hd">TapeSend · notification trail</div><div className="bd stack note">
-            <div className="addr-line"><strong>Hub</strong> <span className="mono">{HUB.slice(0,10)}…{HUB.slice(-6)}</span> · {CHAIN_NAMES[w.chainId] || (w.chainId ? 'chain ' + w.chainId : '—')}</div>
+            <div className="addr-line"><strong>Hub</strong> <span className="mono">{HUB.slice(0,10)}…{HUB.slice(-6)}</span> · {CHAIN_NAMES[w.chainId] || (w.chainId ? 'chain ' + w.chainId : '-')}</div>
             {hubState ? <>
-              <div className="addr-line"><strong>Hub impl</strong> <span className="mono">{hubState.implementation ? hubState.implementation.slice(0,10)+'…'+hubState.implementation.slice(-6) : '—'}</span> · {hubState.expectedImplementation ? 'audited build' : 'not the published audited build'} · {hubState.sealed ? 'sealed' : 'owner can still upgrade'}</div>
+              <div className="addr-line"><strong>Hub impl</strong> <span className="mono">{hubState.implementation ? hubState.implementation.slice(0,10)+'…'+hubState.implementation.slice(-6) : '-'}</span> · {hubState.expectedImplementation ? 'audited build' : 'not the published audited build'} · {hubState.sealed ? 'sealed' : 'owner can still upgrade'}</div>
               <p style={{margin:0}}>Read live from the chain on every load. The hub is a proxy: until it is sealed, its owner can replace the implementation, so notifications are verifiable but not yet final.</p>
             </> : null}
             {!tape.container ? <p style={{margin:0}}>Phase notifications activate once the SafeShamba container is minted on X Layer (build stage 5 → sets <span className="mono">VITE_TAPE_CONTAINER</span>).</p> : <>
@@ -241,33 +241,33 @@ export default function App() {
           </div></div>
 
           {ctx && ctx.isClient ? <div className="phase-list">
-            <Tx title="Client — Select plot" busy={busy} onRun={()=>runEscrow(c=>c.selectPlot(0))} note="Discovery → Plot selected."/>
-            <Tx title="Client — Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ${native}) into multisig custody.`}/>
-            <Tx title="Client — Verify document" busy={busy} onRun={()=>runEscrow(c=>c.verifyDocument(0, Number(doc.type)))}><label>Document type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label></Tx>
-            <Tx title="Client — Proceed with purchase" busy={busy} onRun={()=>runEscrow(c=>c.proceedWithPurchase(0))}/>
-            <Tx title="Client — Cancel (pre-execution)" busy={busy} onRun={()=>runEscrow(c=>c.cancelEscrow(0))} note="Only before execution; enables refund release authorization."/>
+            <Tx title="Client: Select plot" busy={busy} onRun={()=>runEscrow(c=>c.selectPlot(0))} note="Discovery → Plot selected."/>
+            <Tx title="Client: Fund escrow" busy={busy} onRun={()=>runEscrow(c=>c.fundEscrow(0,true,{value:ethers.utils.parseEther(fmt(ctx.budget))}))} note={`Pays full budget (${fmt(ctx.budget)} ${native}) into multisig custody.`}/>
+            <Tx title="Client: Verify document" busy={busy} onRun={()=>runEscrow(c=>c.verifyDocument(0, Number(doc.type)))}><label>Document type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label></Tx>
+            <Tx title="Client: Proceed with purchase" busy={busy} onRun={()=>runEscrow(c=>c.proceedWithPurchase(0))}/>
+            <Tx title="Client: Cancel (pre-execution)" busy={busy} onRun={()=>runEscrow(c=>c.cancelEscrow(0))} note="Only before execution; enables refund release authorization."/>
           </div> : null}
 
           {ctx && (ctx.isNotary || ctx.isTreasury) ? <div className="phase-list">
-            <Tx title="Treasury/Notary — Upload gallery (advance to discovery)" busy={busy} onRun={()=>runEscrow(c=>c.uploadDigitalGallery(0))}/>
-            <Tx title="Notary — Upload document hash" busy={busy} onRun={()=>runEscrow(c=>c.uploadDocument(0, Number(doc.type), doc.hash||ethers.constants.HashZero))}>
+            <Tx title="Treasury/Notary: Upload gallery (advance to discovery)" busy={busy} onRun={()=>runEscrow(c=>c.uploadDigitalGallery(0))}/>
+            <Tx title="Notary: Upload document hash" busy={busy} onRun={()=>runEscrow(c=>c.uploadDocument(0, Number(doc.type), doc.hash||ethers.constants.HashZero))}>
               <label>Type<select value={doc.type} onChange={e=>setDoc({...doc,type:e.target.value})}>{DOC_TYPES.map((n,i)=><option key={n} value={i}>{i}: {n}</option>)}</select></label>
               <label>Hash (bytes32)<input className="mono" value={doc.hash} onChange={e=>setDoc({...doc,hash:e.target.value})} placeholder="0x…"/></label>
             </Tx>
-            <Tx title="Notary — Set negotiated rates" busy={busy} onRun={()=>runEscrow(c=>c.setNegotiatedRates(0, Number(rates.deposit), Number(rates.fee)))}>
+            <Tx title="Notary: Set negotiated rates" busy={busy} onRun={()=>runEscrow(c=>c.setNegotiatedRates(0, Number(rates.deposit), Number(rates.fee)))}>
               <div className="grid-2">
                 <label>Deposit (bp)<input value={rates.deposit} onChange={e=>setRates({...rates,deposit:e.target.value})}/></label>
                 <label>Facilitation fee (bp, ≤500)<input value={rates.fee} onChange={e=>setRates({...rates,fee:e.target.value})}/></label>
               </div>
             </Tx>
-            <Tx title="Notary — Execute fiat bridge" busy={busy} onRun={()=>runEscrow(c=>c.executeFiatBridge(0, ethers.BigNumber.from(fiat.kes||'0'), ethers.BigNumber.from(fiat.rate||'0')))}>
+            <Tx title="Notary: Execute fiat bridge" busy={busy} onRun={()=>runEscrow(c=>c.executeFiatBridge(0, ethers.BigNumber.from(fiat.kes||'0'), ethers.BigNumber.from(fiat.rate||'0')))}>
               <div className="grid-2"><label>KES amount<input value={fiat.kes} onChange={e=>setFiat({...fiat,kes:e.target.value})}/></label><label>Exchange rate<input value={fiat.rate} onChange={e=>setFiat({...fiat,rate:e.target.value})}/></label></div>
             </Tx>
-            <Tx title="Notary — Upload lodgement receipt" busy={busy} onRun={()=>runEscrow(c=>c.uploadLodgementReceipt(0, doc.hash||ethers.constants.HashZero, Math.floor(Date.now()/1000)+30*86400))}/>
-            <Tx title="Notary — Complete transfer" busy={busy} onRun={()=>runEscrow(c=>c.completeTransfer(0, doc.hash||ethers.constants.HashZero, 'TRACKING'))}/>
+            <Tx title="Notary: Upload lodgement receipt" busy={busy} onRun={()=>runEscrow(c=>c.uploadLodgementReceipt(0, doc.hash||ethers.constants.HashZero, Math.floor(Date.now()/1000)+30*86400))}/>
+            <Tx title="Notary: Complete transfer" busy={busy} onRun={()=>runEscrow(c=>c.completeTransfer(0, doc.hash||ethers.constants.HashZero, 'TRACKING'))}/>
           </div> : null}
 
-          {ctx && ctx.isMsOwner ? <div className="card"><div className="hd">Multisig owner — submit authorized release</div><div className="bd stack note">
+          {ctx && ctx.isMsOwner ? <div className="card"><div className="hd">Multisig owner, submit authorized release</div><div className="bd stack note">
             <p style={{margin:0}}>Releases are <strong>state-gated</strong>: the escrow authorizes (escrowId, recipient, amount, purpose) only when the workflow state permits it. Submitting consumes the release slot and creates/confirms a multisig transaction.</p>
             <label>Purpose<select value={rel.purpose} onChange={async e=>{const p=e.target.value; const map={DD:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_DD_FEE(),FAC:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_FACILITATION(),REF:await new ethers.Contract(ctx.address,ESCROW_ABI,w.provider).P_REFUND()}; setRel({...rel,purpose:p,_hash:map[p]})}}>
               <option value="DD">DD_FEE → treasury ({fmt(ctx.amounts[0])} {native})</option>

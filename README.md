@@ -3,18 +3,18 @@
 A P2P/Escrow interface that bridges blockchain logic with real-world legal milestones for land purchases. This system implements a "Notary-Mediated" workflow where the Legal Notary acts as the Oracle for fund releases.
 
 > **Independence notice (NEAR AI Agents Hackathon):** SafeShamba is an independent
-> submission (Track 08 — Real-World Money). It shares no code with [**BotIn**](https://github.com/llakterian/BotIn),
+> submission (Track 08: Real-World Money). It shares no code with [**BotIn**](https://github.com/llakterian/BotIn),
 > our separate Track 07 submission.
 
 > **X Layer / TapeOut:** this branch (`xlayer-tapeout`) adds the X Layer
 > deployment (chain 196, OKB gas), permanent **DeWEB** hosting in a circuit
 > container and **TapeSend (TAP-10)** escrow phase notifications.
-> Full write-up — deployment, TapeOut usage, fee model and the hub's live trust
+> Full write-up, deployment, TapeOut usage, fee model and the hub's live trust
 > state: **[docs/X_LAYER_TAPEOut.md](docs/X_LAYER_TAPEOut.md)**.
 > Live client check against chain 196: `node verify_tapesend.mjs` (27/27).
 
 
-## Deployment — Verified, Live (Sepolia)
+## Deployment: Verified, Live (Sepolia)
 
 All contracts are **deployed and verified** on Sepolia testnet (chain 11155111), and the frontend is configured to talk to them. Click to inspect on Etherscan:
 
@@ -153,8 +153,8 @@ function finalizeTransfer(uint _escrowId)
 
 ```solidity
 enum Milestone { 
-    DueDiligence,    // $200 for registry search and site visit
-    Deposit,         // Percentage-based deposit to seller
+    DueDiligence, // $200 for registry search and site visit
+    Deposit, // Percentage-based deposit to seller
     FinalSettlement  // Balance + facilitation fee
 }
 ```
